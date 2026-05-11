@@ -40,15 +40,22 @@ export const LoadingSpinner = {
   },
 
   /**
-   * Show spinner and navigate after delay
+   * Show spinner and navigate after an optional delay
    * @param {string} url - The URL to navigate to
-   * @param {number} delay - Delay in ms before navigation (default: 500)
+   * @param {number} delay - Delay in ms before navigation (default: 0)
    */
-  navigateTo(url, delay = 500) {
+  navigateTo(url, delay = 0) {
     this.show();
-    setTimeout(() => {
+
+    const navigate = () => {
       window.location.href = url;
-    }, delay);
+    };
+
+    if (delay > 0) {
+      setTimeout(navigate, delay);
+    } else {
+      requestAnimationFrame(navigate);
+    }
   }
 };
 
