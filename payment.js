@@ -44,7 +44,6 @@ let requestData = null;
 let serviceId = null;
 let offerId = null;
 let requestId = null;
-let currentUser = null;
 let platformSettings = null;
 let isOfferPayment = false;
 let providerId = null;

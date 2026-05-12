@@ -26,36 +26,6 @@
           Vora
         </a>
 
-        <!-- DESKTOP NAV -->
-        <nav class="hidden lg:flex items-center gap-6">
-
-          <a href="home.html"
-            class="font-semibold text-black-600">
-            Home
-          </a>
-
-          <a href="browse.html"
-            class="font-medium text-gray-700 hover:text-black-600 transition">
-            Browse
-          </a>
-
-              <a href="my-messages.html"
-      class="block font-semibold text-black-800">
-      My Messages
-    </a>
-
-    <a href="browse-pool.html"
-            class="block font-semibold text-black-800">
-            Request Pool
-          </a>
-
-          <a href="add-service.html"
-            class="font-medium text-gray-700 hover:text-black-600 transition">
-            Become a Provider
-          </a>
-
-        </nav>
-
       </div>
 
       <!-- RIGHT -->
@@ -92,12 +62,6 @@
           Logout
         </button>
 
-        <!-- MOBILE MENU -->
-        <button id="hamburger"
-          class="lg:hidden text-2xl">
-          ☰
-        </button>
-
       </div>
 
     </div>
@@ -106,56 +70,7 @@
 
 </header>
 
-<!-- ================= MOBILE MENU ================= -->
-<div id="sideMenu"
-  class="fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50
-  transform -translate-x-full transition-transform duration-300 overflow-y-auto lg:hidden">
-
-  <!-- TOP -->
-  <div class="flex items-center justify-between p-4 border-b">
-
-    <h2 class="text-xl font-bold">
-      Menu
-    </h2>
-
-    <button id="closeMenu" class="text-2xl">
-      ✕
-    </button>
-
   </div>
-
-  <!-- LINKS -->
-  <div class="p-4 space-y-5">
-
-    <a href="home.html"
-      class="block font-semibold text-black-800">
-      Home
-    </a>
-
-    <a href="browse.html"
-      class="block font-semibold text-black-800">
-      Browse
-    </a>
-
-        <a href="my-messages.html"
-      class="block font-semibold text-black-800">
-      My Messages
-    </a>
-
-    <a href="browse-pool.html"
-      class="block font-semibold text-black-800">
-      Request Pool
-    </a>
-
-    <a href="add-service.html"
-      class="block font-semibold text-black-800">
-      Become a Provider
-    </a>
-
-    <button id="logoutBtnSideMenu"
-      class="block text-red-600 font-semibold">
-      Logout
-    </button>
 
   </div>
 
@@ -168,7 +83,10 @@
 
     <main class="md:ml-72 pt-24 max-w-2xl mx-auto py-12 px-4">
         <div class="mb-6 flex items-center gap-4">
-            <button id="backBtn" type="button" class="text-blue-600 hover:text-blue-800 font-semibold">← Back</button>
+        <button id="backBtn" type="button" onclick="window.history.back()"
+          class="text-blue-600 hover:text-blue-800 font-semibold">
+          ← Back
+        </button>
             <h1 class="text-3xl font-extrabold text-gray-900">Complete Your Booking</h1>
         </div>
         <div id="booking-summary" class="bg-white p-6 rounded-lg shadow-md mb-8">
@@ -225,11 +143,9 @@
     <script src="./payment.js" type="module"></script>
     <script src="./menu.js" type="module"></script>       
     <script src="https://js.paystack.co/v1/inline.js"></script>
-    <script src="./router.js" type="module"></script>
     <script src="./notifications.js" type="module"></script>
     <script src="./notification-service.js" type="module"></script>
     <script src="./notification-badge.js" type="module"></script>
-    <script src="./loading-utils.js" type="module"></script>
 
 <!--Start of Tawk.to Script-->
 <script type="text/javascript">
