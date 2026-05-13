@@ -2,6 +2,7 @@ import { LoadingSpinner } from './loading-utils.js';
 import { auth, db } from './firebase-config.js';
 import { signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { supabase } from './supabase.js';
 
 // Category emoji mapping
 const categoryEmojis = {
@@ -136,15 +137,17 @@ async function fetchCategories() {
     try {
         console.log('Fetching categories...');
 
-        const servicesSnapshot = await getDocs(collection(db, 'services'));
+        const { data, error } = await supabase
+            .from('services')
+            .select('category');
 
-        console.log('Services found:', servicesSnapshot.size);
+        if (error) throw error;
+
+        console.log('Services found:', data.length);
 
         const categories = new Set();
 
-        servicesSnapshot.docs.forEach(doc => {
-            const service = doc.data();
-
+        data.forEach(service => {
             if (service.category) {
                 categories.add(service.category);
             }
@@ -409,16 +412,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
 
             try {
+                const { data, error } = await supabase
+                    .from('services')
+                    .select('id')
+                    .eq('user_id', user.uid)
+                    .limit(1);
 
-                const servicesQuery = query(
-                    collection(db, 'services'),
-                    where('userId', '==', user.uid)
-                );
+                if (error) throw error;
 
-                const servicesSnapshot =
-                    await getDocs(servicesQuery);
-
-                if (servicesSnapshot.size > 0) {
+                if (data && data.length > 0) {
 
                     if (providerHubLinkNav) {
                         providerHubLinkNav.classList.remove('hidden');

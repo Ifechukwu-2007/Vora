@@ -1,13 +1,5 @@
 import { LoadingSpinner } from './loading-utils.js';
-import { db, auth } from './firebase-config.js';
-import {
-    collection,
-    getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {
-    onAuthStateChanged,
-    signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { supabase } from './supabase.js';
 
 // ================= UI =================
 const servicesGrid = document.getElementById('servicesGrid');
@@ -25,8 +17,8 @@ let allServices = [];
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', async () => {
     // Redirect to home.html if user is already logged in
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
             window.location.href = 'home.html';
             return;
         }
@@ -43,23 +35,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ================= LOAD SERVICES =================
 async function loadServices() {
     try {
-        const snapshot = await getDocs(collection(db, "services"));
+        // Load services from Supabase
+        const { data, error } = await supabase
+            .from('services')
+            .select('*')
+            .limit(8); // Show 8 featured services
 
-        allServices = [];
+        if (error) throw error;
 
-        snapshot.forEach(docSnap => {
-            allServices.push({
-                id: docSnap.id,
-                ...docSnap.data()
-            });
-        });
+        const services = data.map(service => ({
+            id: service.id,
+            ...service,
+            providerName: service.provider_name || 'N/A'
+        }));
 
+        console.log('Loaded services from Supabase:', services.length);
+        allServices = services;
         renderServices(allServices);
 
     } catch (error) {
-        console.error(error);
+        console.error('Error loading services:', error);
         servicesGrid.innerHTML = `
-            <p class="text-center col-span-3 text-red-500">
+            <p class="col-span-full text-center text-red-500">
                 Failed to load services.
             </p>
         `;
@@ -125,14 +122,14 @@ function setupEvents() {
 
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
-            await signOut(auth);
+            await supabase.auth.signOut();
             window.location.href = 'index.html';
         });
     }
 
     if (logoutBtnSideMenu) {
         logoutBtnSideMenu.addEventListener('click', async () => {
-            await signOut(auth);
+            await supabase.auth.signOut();
             window.location.href = 'index.html';
         });
     }

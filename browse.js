@@ -1,8 +1,6 @@
-import { auth, db } from './firebase-config.js';
-import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { collection, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { LoadingSpinner } from './loading-utils.js';
 import { supabase } from './supabase.js';
+import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { LoadingSpinner } from './loading-utils.js';
 
 let allServices = [];
 let currentBuiltInMargin = 0;
@@ -15,8 +13,17 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 async function getPlatformSettings() {
     try {
-        const settingsDoc = await getDoc(doc(db, 'settings', 'platform'));
-        return settingsDoc.exists() ? settingsDoc.data() : { builtInMargin: 0 };
+        const { data, error } = await supabase
+            .from('settings')
+            .select('built_in_margin')
+            .eq('id', 'platform')
+            .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+            console.error('Error loading platform settings:', error);
+        }
+
+        return data ? { builtInMargin: data.built_in_margin || 0 } : { builtInMargin: 0 };
     } catch (error) {
         console.error('Error loading platform settings:', error);
         return { builtInMargin: 0 };
@@ -40,14 +47,14 @@ const urlParams = new URLSearchParams(window.location.search);
 const querySearch = urlParams.get('search');
 const queryCategory = urlParams.get('category');
 
-// 🔐 Auth check  
-onAuthStateChanged(auth, async (user) => {  
-    if (!user) {  
-        LoadingSpinner.navigateTo('login.html');  
-        return;  
-    }  
+// 🔐 Auth check
+supabase.auth.onAuthStateChange((event, session) => {
+    if (event !== 'SIGNED_IN' || !session) {
+        LoadingSpinner.navigateTo('login.html');
+        return;
+    }
 
-    currentUser = user;
+    currentUser = session.user;
     servicesContainer.innerHTML = '<p>Loading services...</p>';  
 
     await loadServices(servicesContainer);  
@@ -108,38 +115,21 @@ async function loadServices(container) {
             return;
         }
 
-        // Try to fetch from Supabase first
-        let supabaseServices = [];
-        try {
-            const { data, error } = await supabase
-                .from('services')
-                .select('*');
-            
-            if (error) {
-                console.warn('Supabase fetch error:', error);
-            } else if (data) {
-                supabaseServices = data.map(service => ({
-                    id: service.id,
-                    ...service,
-                    providerName: service.provider_name || 'N/A'
-                }));
-                console.log('Loaded services from Supabase:', supabaseServices.length);
-            }
-        } catch (supabaseError) {
-            console.warn('Supabase connection failed, falling back to Firebase:', supabaseError);
+        // Load services from Supabase
+        const { data, error } = await supabase
+            .from('services')
+            .select('*');
+        
+        if (error) {
+            throw error;
         }
 
-        // Fall back to Firebase if Supabase is empty
-        let services = supabaseServices;
-        if (services.length === 0) {
-            const snapshot = await getDocs(collection(db, 'services'));
-            services = snapshot.docs.map(doc => ({  
-                id: doc.id,  
-                ...doc.data(),  
-                providerName: doc.data().providerName || 'N/A'  
-            }));
-            console.log('Loaded services from Firebase:', services.length);
-        }
+        services = data.map(service => ({
+            id: service.id,
+            ...service,
+            providerName: service.provider_name || 'N/A'
+        }));
+        console.log('Loaded services from Supabase:', services.length);
 
         allServices = services;
         const platformSettings = await getPlatformSettings();

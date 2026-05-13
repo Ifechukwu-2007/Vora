@@ -1,5 +1,4 @@
-import { auth, db } from './firebase-config.js';
-import { doc, setDoc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { supabase } from './supabase.js';
 import { LoadingSpinner } from './loading-utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,8 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
         addServiceForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const user = auth.currentUser;
-            if (!user) {
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
                 alert("You must be logged in to add a service.");
                 LoadingSpinner.navigateTo('login.html');
                 return;
@@ -36,29 +35,41 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let providerName = 'Anonymous';
-            const userDocRef = doc(db, "users", user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                const userData = userDocSnap.data();
-                providerName = userData.name || userData.fullName || 'Anonymous';
+            try {
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('full_name')
+                    .eq('uid', user.id)
+                    .single();
+
+                if (!userError && userData) {
+                    providerName = userData.full_name || 'Anonymous';
+                }
+            } catch (error) {
+                console.warn('Could not fetch user data:', error);
             }
 
             const serviceData = {
-                userId: user.uid,
-                providerId: user.uid,
-                providerName: providerName,
+                provider_id: user.id,
                 title: document.getElementById('service-title').value.trim(),
                 description: document.getElementById('service-description').value.trim(),
                 category: category,
                 price: parseFloat(priceValue),
-                location: document.getElementById('service-location').value.trim(),
-                createdAt: new Date()
+                location: document.getElementById('service-location').value.trim()
             };
 
             try {
                 console.log('Adding service with data:', serviceData);
-                const docRef = await addDoc(collection(db, "services"), serviceData);
-                console.log('Service added with ID:', docRef.id);
+                const { data, error } = await supabase
+                    .from('services')
+                    .insert([serviceData])
+                    .select();
+
+                if (error) {
+                    throw error;
+                }
+
+                console.log('Service added with ID:', data[0].id);
                 alert("Service added successfully!");
                 LoadingSpinner.navigateTo('my-services.html');
             } catch (error) {

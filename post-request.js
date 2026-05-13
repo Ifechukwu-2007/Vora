@@ -9,6 +9,7 @@ import {
 import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { supabase } from './supabase.js';
 
 const form = document.getElementById("post-request-form");
 const cancelBtn = document.getElementById("cancelBtn");
@@ -48,21 +49,25 @@ form.addEventListener("submit", async (e) => {
   try {
     // 📝 Create request object
     const requestData = {
-      userId: currentUser.uid,
-      serviceType,
+      user_id: currentUser.uid,
+      service_type: serviceType,
       description,
       location,
-      dateNeeded,
-      timeNeeded: timeNeeded || null,
+      date_needed: dateNeeded,
+      time_needed: timeNeeded || null,
       budget: budget ? Number(budget) : null,
-      fullName,
+      full_name: fullName,
       phone,
       status: "open",
-      createdAt: serverTimestamp()
+      created_at: new Date().toISOString()
     };
 
-    // 📦 Save to Firestore
-    await addDoc(collection(db, "requests"), requestData);
+    // 📦 Save to Supabase
+    const { error } = await supabase
+      .from('requests')
+      .insert([requestData]);
+
+    if (error) throw error;
 
     alert("Request posted successfully!");
 

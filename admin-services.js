@@ -12,6 +12,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import LoadingSpinner from './loading-utils.js';
+import { supabase } from './supabase.js';
 
 // Check admin access
 onAuthStateChanged(auth, async (user) => {
@@ -51,13 +52,38 @@ const saveBtn = document.getElementById("save");
 const deleteBtn = document.getElementById("delete");
 
 // ================= LOAD SERVICES =================
-onSnapshot(collection(db, "services"), (snapshot) => {
-  docs = snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+const loadServices = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*');
+    
+    if (error) throw error;
+    
+    docs = data.map(service => ({
+      id: service.id,
+      ...service,
+      providerName: service.provider_name || 'N/A'
+    }));
+    
+    filtered = [...docs];
+    renderTable();
+  } catch (error) {
+    console.error('Error loading services:', error);
+  }
+};
 
-  filtered = [...docs];
+// Set up real-time subscription
+supabase
+  .channel('services_changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, (payload) => {
+    console.log('Services change detected:', payload);
+    loadServices(); // Reload services when changes occur
+  })
+  .subscribe();
+
+// Initial load
+loadServices();
   render();
 });
 
@@ -122,7 +148,21 @@ saveBtn.onclick = async () => {
     const data = JSON.parse(editor.value);
     delete data.id;
 
-    await updateDoc(doc(db, "services", currentDocId), data);
+    const { error } = await supabase
+      .from('services')
+      .update({
+        title: data.title,
+        description: data.description,
+        price: data.price,
+        provider_name: data.providerName || data.provider_name,
+        category: data.category,
+        location: data.location,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', currentDocId);
+    
+    if (error) throw error;
+    
     alert("Service updated");
   } catch (err) {
     alert("Invalid JSON: " + err.message);
@@ -134,7 +174,13 @@ deleteBtn.onclick = async () => {
   if (!confirm("Delete service?")) return;
 
   try {
-    await deleteDoc(doc(db, "services", currentDocId));
+    const { error } = await supabase
+      .from('services')
+      .delete()
+      .eq('id', currentDocId);
+    
+    if (error) throw error;
+    
     panel.classList.add("hidden");
     currentDocId = null;
     alert("Service deleted");
@@ -146,17 +192,22 @@ deleteBtn.onclick = async () => {
 // ================= ADD =================
 addBtn.onclick = async () => {
   try {
-    const ref = await addDoc(collection(db, "services"), {
-      title: "New Service",
-      description: "",
-      price: 0,
-      provider: "",
-      providerName: "",
-      status: "pending",
-      createdAt: serverTimestamp(),
-    });
+    const { data, error } = await supabase
+      .from('services')
+      .insert([{
+        title: "New Service",
+        description: "",
+        price: 0,
+        provider_name: "",
+        category: "",
+        location: "",
+        created_at: new Date().toISOString(),
+      }])
+      .select();
 
-    openDoc(ref.id);
+    if (error) throw error;
+
+    openDoc(data[0].id);
   } catch (err) {
     alert("Error creating service: " + err.message);
   }
