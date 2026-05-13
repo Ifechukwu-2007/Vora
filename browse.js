@@ -2,6 +2,7 @@ import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { collection, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { LoadingSpinner } from './loading-utils.js';
+import { supabase } from './supabase.js';
 
 let allServices = [];
 let currentBuiltInMargin = 0;
@@ -107,15 +108,42 @@ async function loadServices(container) {
             return;
         }
 
-        const snapshot = await getDocs(collection(db, 'services'));
+        // Try to fetch from Supabase first
+        let supabaseServices = [];
+        try {
+            const { data, error } = await supabase
+                .from('services')
+                .select('*');
+            
+            if (error) {
+                console.warn('Supabase fetch error:', error);
+            } else if (data) {
+                supabaseServices = data.map(service => ({
+                    id: service.id,
+                    ...service,
+                    providerName: service.provider_name || 'N/A'
+                }));
+                console.log('Loaded services from Supabase:', supabaseServices.length);
+            }
+        } catch (supabaseError) {
+            console.warn('Supabase connection failed, falling back to Firebase:', supabaseError);
+        }
+
+        // Fall back to Firebase if Supabase is empty
+        let services = supabaseServices;
+        if (services.length === 0) {
+            const snapshot = await getDocs(collection(db, 'services'));
+            services = snapshot.docs.map(doc => ({  
+                id: doc.id,  
+                ...doc.data(),  
+                providerName: doc.data().providerName || 'N/A'  
+            }));
+            console.log('Loaded services from Firebase:', services.length);
+        }
+
+        allServices = services;
         const platformSettings = await getPlatformSettings();
         currentBuiltInMargin = platformSettings.builtInMargin || 0;
-
-        allServices = snapshot.docs.map(doc => ({  
-            id: doc.id,  
-            ...doc.data(),  
-            providerName: doc.data().providerName || 'N/A'  
-        }));  
 
         // Cache the results
         localStorage.setItem(CACHE_KEY, JSON.stringify(allServices));

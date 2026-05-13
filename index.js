@@ -5,14 +5,20 @@ import {
     getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
-    onAuthStateChanged
+    onAuthStateChanged,
+    signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // ================= UI =================
 const servicesGrid = document.getElementById('servicesGrid');
-const searchInput = document.getElementById('searchInput');
-const searchButton = document.getElementById('searchButton');
-const categorySelect = document.getElementById('categorySelect');
+const searchInput = document.getElementById('indexSearchInput');
+const searchButton = document.getElementById('indexSearchBtn');
+const guestActions = document.getElementById('guestActions');
+const userActions = document.getElementById('userActions');
+const mobileGuestActions = document.getElementById('mobileGuestActions');
+const mobileUserActions = document.getElementById('mobileUserActions');
+const logoutBtn = document.getElementById('logoutBtn');
+const logoutBtnSideMenu = document.getElementById('logoutBtnSideMenu');
 
 let allServices = [];
 
@@ -22,7 +28,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     onAuthStateChanged(auth, (user) => {
         if (user) {
             window.location.href = 'home.html';
+            return;
         }
+
+        if (guestActions) guestActions.classList.remove('hidden');
+        if (mobileGuestActions) mobileGuestActions.classList.remove('hidden');
+        if (userActions) userActions.classList.add('hidden');
+        if (mobileUserActions) mobileUserActions.classList.add('hidden');
     });
     await loadServices();
     setupEvents();
@@ -42,7 +54,6 @@ async function loadServices() {
             });
         });
 
-        populateCategories();
         renderServices(allServices);
 
     } catch (error) {
@@ -92,30 +103,39 @@ function renderServices(services) {
 
 // ================= SEARCH + FILTER =================
 function setupEvents() {
-    searchButton.addEventListener('click', filterServices);
+    if (searchButton) {
+        searchButton.addEventListener('click', () => {
+            const searchTerm = searchInput.value.trim();
+            if (searchTerm) {
+                window.location.href = `browse.html?search=${encodeURIComponent(searchTerm)}`;
+            }
+        });
+    }
 
-    searchInput.addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') filterServices();
-    });
+    if (searchInput) {
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                const searchTerm = searchInput.value.trim();
+                if (searchTerm) {
+                    window.location.href = `browse.html?search=${encodeURIComponent(searchTerm)}`;
+                }
+            }
+        });
+    }
 
-    categorySelect.addEventListener('change', filterServices);
-}
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+    }
 
-function filterServices() {
-    const searchTerm = searchInput.value.toLowerCase();
-    const selectedCategory = categorySelect.value;
-
-    const filtered = allServices.filter(service => {
-        const title = (service.title || '').toLowerCase();
-        const category = service.category || '';
-
-        return (
-            title.includes(searchTerm) &&
-            (selectedCategory === 'all' || category === selectedCategory)
-        );
-    });
-
-    renderServices(filtered);
+    if (logoutBtnSideMenu) {
+        logoutBtnSideMenu.addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+    }
 }
 
 // ================= CATEGORIES =================

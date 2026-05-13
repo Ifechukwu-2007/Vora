@@ -19,6 +19,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import { app } from "./firebase-config.js";
+import { supabase } from "./supabase.js";
 
 // ===============================
 // FIREBASE SETUP
@@ -195,7 +196,7 @@ if (loginForm) {
     spinner.classList.remove("hidden");
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
       showSuccess("Login successful!");
 
@@ -207,20 +208,24 @@ if (loginForm) {
       console.error(error);
 
       switch (error.code) {
+        case "auth/invalid-email":
+          showError("Invalid email address.");
+          break;
+
+        case "auth/user-disabled":
+          showError("This account has been disabled.");
+          break;
+
         case "auth/user-not-found":
-          showError("User not found.");
+          showError("No account found with this email.");
           break;
 
         case "auth/wrong-password":
           showError("Incorrect password.");
           break;
 
-        case "auth/invalid-credential":
-          showError("Invalid email or password.");
-          break;
-
         default:
-          showError(error.message);
+          showError(error.message || "Login failed. Please try again.");
       }
 
     } finally {
@@ -371,28 +376,21 @@ if (registerForm) {
       spinner.classList.remove("hidden");
 
       try {
-        // CREATE USER
-        const userCredential =
-          await createUserWithEmailAndPassword(
-            auth,
-            email,
-            password
-          );
-
+        // CREATE USER WITH FIREBASE
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // UPDATE PROFILE
+        // UPDATE PROFILE WITH FULL NAME
         await updateProfile(user, {
           displayName: fullname
         });
 
-        // SAVE USER TO FIRESTORE
-        await setDoc(doc(db, "users", user.uid), {
-          uid: user.uid,
-          fullname,
-          email,
-          createdAt: serverTimestamp(),
-          role: "user",
+        // CREATE USER PROFILE IN FIRESTORE
+        await setDoc(doc(db, 'users', user.uid), {
+          full_name: fullname,
+          email: email,
+          created_at: serverTimestamp(),
+          role: 'user',
           verified: false
         });
 
@@ -425,8 +423,14 @@ if (registerForm) {
             );
             break;
 
+          case "auth/invalid-email":
+            showError(
+              "Invalid email address."
+            );
+            break;
+
           default:
-            showError(error.message);
+            showError(error.message || "Registration failed. Please try again.");
         }
 
       } finally {
