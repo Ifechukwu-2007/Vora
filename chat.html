@@ -202,7 +202,11 @@
     <script src="./notifications.js" type="module"></script>
     <script src="./notification-service.js" type="module"></script>
     <script src="./notification-badge.js" type="module"></script>
-    
+<script type="module">
+  import { supabase } from './supabase.js'
+
+  console.log(supabase)
+</script>
 </body>
 </html>
 

@@ -82,7 +82,7 @@ function renderServices(services) {
                 class="bg-blue-600 text-white px-4 py-2 rounded w-full"
                 onclick="viewService('${service.id}')"
             >
-                Book Now
+                View Details
             </button>
         `;
 
@@ -138,15 +138,6 @@ function populateCategories() {
 
 // ================= NAVIGATION (AUTH GUARD) =================
 window.viewService = function(serviceId) {
-    const redirectUrl = `service-details.html?serviceId=${serviceId}`;
-
-    onAuthStateChanged(auth, (user) => {
-        if (!user) {
-            // Not logged in → send to login with redirect
-            LoadingSpinner.navigateTo(`login.html?redirect=${encodeURIComponent(redirectUrl)}`);
-        } else {
-            // Logged in → go to service details
-            LoadingSpinner.navigateTo(redirectUrl);
-        }
-    });
+    const redirectUrl = `service.html?id=${serviceId}`;
+    LoadingSpinner.navigateTo(redirectUrl);
 };

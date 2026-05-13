@@ -18,7 +18,7 @@ async function getPlatformSettings() {
 
 function roundUpToIncrement(value, increment = 500) {
   return Math.ceil(value / increment) * increment;
-}
+} 
 
 document.addEventListener('DOMContentLoaded', async () => {
     const serviceContainer = document.getElementById('service-container');
@@ -108,14 +108,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             messageBtn.textContent = 'Messaging not available (Provider not found)';
         } else {
             bookNowBtn.addEventListener('click', () => {
-                window.location.href = `payment.html?serviceId=${serviceId}`;
+                onAuthStateChanged(auth, (user) => {
+                    if (!user) {
+                        alert("You must be logged in to book this service.");
+                        window.location.href = `login.html?redirect=${encodeURIComponent(window.location.href)}`;
+                        return;
+                    }
+
+                    window.location.href = `payment.html?serviceId=${serviceId}`;
+                });
             });
 
             messageBtn.addEventListener('click', () => {
                 onAuthStateChanged(auth, async (user) => {
                     if (!user) {
                         alert("You must be logged in to send a message.");
-                        window.location.href = 'login.html';
+                        window.location.href = `login.html?redirect=${encodeURIComponent(window.location.href)}`;
                         return;
                     }
 
