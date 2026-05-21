@@ -1,0 +1,316 @@
+import { supabase } from './supabase.js';
+
+document.addEventListener('DOMContentLoaded', async () => {
+
+  // =========================
+  // DOM ELEMENTS
+  // =========================
+
+  const guestActions =
+    document.getElementById('guestActions');
+
+  const userActions =
+    document.getElementById('userActions');
+
+  const mobileGuestActions =
+    document.getElementById('mobileGuestActions');
+
+  const mobileUserActions =
+    document.getElementById('mobileUserActions');
+
+  const logoutBtn =
+    document.getElementById('logoutBtn');
+
+  const logoutBtnSideMenu =
+    document.getElementById('logoutBtnSideMenu');
+
+  const servicesGrid =
+    document.getElementById('servicesGrid');
+
+  const searchInput =
+    document.getElementById('indexSearchInput');
+
+  const searchBtn =
+    document.getElementById('indexSearchBtn');
+
+  // =========================
+  // AUTH CHECK
+  // =========================
+
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
+
+  // =========================
+  // SHOW/HIDE UI
+  // =========================
+
+  if (session) {
+
+    // USER LOGGED IN
+    guestActions?.classList.add('hidden');
+    mobileGuestActions?.classList.add('hidden');
+
+    userActions?.classList.remove('hidden');
+    mobileUserActions?.classList.remove('hidden');
+
+  } else {
+
+    // GUEST
+    guestActions?.classList.remove('hidden');
+    mobileGuestActions?.classList.remove('hidden');
+
+    userActions?.classList.add('hidden');
+    mobileUserActions?.classList.add('hidden');
+  }
+
+  // =========================
+  // LOGOUT
+  // =========================
+
+  async function logout() {
+
+    try {
+
+      await supabase.auth.signOut();
+
+      alert('Logged out successfully');
+
+      window.location.href =
+        'login.html';
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert('Logout failed');
+    }
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener(
+      'click',
+      logout
+    );
+  }
+
+  if (logoutBtnSideMenu) {
+    logoutBtnSideMenu.addEventListener(
+      'click',
+      logout
+    );
+  }
+
+  // =========================
+  // SEARCH
+  // =========================
+
+  function handleSearch() {
+
+    const query =
+      searchInput.value.trim();
+
+    if (!query) {
+
+      alert(
+        'Enter a service to search'
+      );
+
+      return;
+    }
+
+    window.location.href =
+      `browse.html?search=${encodeURIComponent(query)}`;
+  }
+
+  searchBtn?.addEventListener(
+    'click',
+    handleSearch
+  );
+
+  searchInput?.addEventListener(
+    'keypress',
+    (e) => {
+
+      if (e.key === 'Enter') {
+        handleSearch();
+      }
+    }
+  );
+
+  // =========================
+  // LOAD FEATURED SERVICES
+  // =========================
+
+  async function loadFeaturedServices() {
+
+    try {
+
+      servicesGrid.innerHTML = `
+        <div class="col-span-full text-center py-10 text-gray-500">
+          Loading services...
+        </div>
+      `;
+
+      const {
+        data: services,
+        error
+      } = await supabase
+        .from('services')
+        .select('*')
+        .order('created_at', {
+          ascending: false
+        })
+        .limit(8);
+
+      if (error) {
+        throw error;
+      }
+
+      // EMPTY
+      if (!services || !services.length) {
+
+        servicesGrid.innerHTML = `
+          <div class="col-span-full text-center py-10 text-gray-500">
+            No services available
+          </div>
+        `;
+
+        return;
+      }
+
+      // CLEAR
+      servicesGrid.innerHTML = '';
+
+      // RENDER
+      services.forEach(service => {
+
+        const card =
+          document.createElement('div');
+
+        card.className = `
+          bg-white
+          rounded-xl
+          overflow-hidden
+          shadow-sm
+          hover:shadow-lg
+          transition
+          cursor-pointer
+        `;
+
+        const image =
+          service.image_url ||
+          'https://placehold.co/600x400?text=Vora';
+
+        card.innerHTML = `
+
+          <img
+            src="${image}"
+            class="w-full h-48 object-cover"
+          />
+
+          <div class="p-4">
+
+            <h3 class="font-bold text-lg text-gray-900 line-clamp-1">
+              ${service.title || 'Untitled'}
+            </h3>
+
+            <p class="text-sm text-gray-500 mt-1">
+              ${service.category || 'General'}
+            </p>
+
+            <p class="text-gray-700 text-sm mt-3 line-clamp-2">
+              ${service.description || ''}
+            </p>
+
+            <div class="flex items-center justify-between mt-4">
+
+              <span class="font-bold text-green-600">
+                ₦${formatNGN(service.price || 0)}
+              </span>
+
+              <button
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                View
+              </button>
+
+            </div>
+
+          </div>
+        `;
+
+        // =========================
+        // CARD CLICK
+        // =========================
+
+        card.addEventListener(
+          'click',
+          () => {
+
+            window.location.href =
+              `service-details.html?id=${service.id}`;
+          }
+        );
+
+        servicesGrid.appendChild(card);
+
+      });
+
+      // =========================
+      // EXPLORE BUTTON
+      // =========================
+
+      const exploreWrapper =
+        document.createElement('div');
+
+      exploreWrapper.className =
+        'col-span-full text-center mt-10';
+
+      exploreWrapper.innerHTML = `
+        <a href="browse.html"
+          class="inline-block bg-black text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition">
+          Explore All Services →
+        </a>
+      `;
+
+      servicesGrid.appendChild(
+        exploreWrapper
+      );
+
+    } catch (err) {
+
+      console.error(err);
+
+      servicesGrid.innerHTML = `
+        <div class="col-span-full text-center py-10 text-red-500">
+          Failed to load services
+        </div>
+      `;
+    }
+  }
+
+  // =========================
+  // LOAD SERVICES
+  // =========================
+
+  loadFeaturedServices();
+
+});
+
+// =========================
+// FORMAT NGN
+// =========================
+
+function formatNGN(value) {
+
+  return new Intl.NumberFormat(
+    'en-NG',
+    {
+      maximumFractionDigits: 0
+    }
+  ).format(
+    Number(value || 0)
+  );
+
+}
