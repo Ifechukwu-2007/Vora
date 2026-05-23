@@ -18,7 +18,7 @@ const modal = document.getElementById("offerDetailsModal");
 const modalContent = document.getElementById("offerDetailsContent");
 const closeModalBtn = document.getElementById("closeOfferModal");
 
-const STATUS = {
+const STATUS = { 
   PENDING: "pending",
   ACCEPTED: "accepted",
   REJECTED: "rejected",

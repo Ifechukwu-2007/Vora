@@ -17,7 +17,7 @@ export const LoadingSpinner = {
           <p class="text-gray-700 font-medium">Loading...</p>
         </div>
       </div>
-    `;
+    `; 
     spinner.style.display = 'none';
     document.body.appendChild(spinner);
   },

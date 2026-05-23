@@ -187,7 +187,7 @@ async function loadProviderBookings(providerId) {
             let customerPicture = customer?.profile_picture || "https://ui-avatars.com/api/?name=User";
 
             // ====================================
-            // VALUES
+            // VALUES 
             // ====================================
             const serviceTitle =
                 service?.title || "Service";

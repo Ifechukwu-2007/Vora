@@ -149,6 +149,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (provider.profile_picture) {
         providerPicture = provider.profile_picture;
       }
+    } else if (providerError) {
+      console.error('Error fetching provider profile:', providerError);
     }
 
     if (providerNameEl) {

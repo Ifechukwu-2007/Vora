@@ -71,6 +71,6 @@ async function initPayoutSettings(form, bankInput, accountInput) {
         } catch (error) {
             console.error("Error saving payout settings:", error);
             alert("There was an error saving your settings. Please try again.");
-        }
+        } 
     });
 }

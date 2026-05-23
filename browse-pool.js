@@ -868,7 +868,7 @@ function formatDate(dateString) {
 
     return new Date(dateString)
     .toLocaleDateString('en-NG', {
-        year: 'numeric',
+        year: 'numeric', 
         month: 'long',
         day: 'numeric'
     });

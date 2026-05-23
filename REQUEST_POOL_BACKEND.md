@@ -9,7 +9,7 @@ The Request Pool System is a two-sided marketplace that enables:
 ## Architecture
 
 ### Core Files
-
+ 
 1. **request-pool-manager.js** - Central backend logic module
    - All CRUD operations for requests and offers
    - Provider statistics tracking

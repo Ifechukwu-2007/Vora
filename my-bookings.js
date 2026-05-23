@@ -111,11 +111,11 @@ async function loadBookings() {
                 .from("bookings")
                 .select(`
                     *,
-                    profiles:provider_id (
-                        id,
-                        email,
-                        full_name,
-                        profile_picture
+                    service_provider:services (
+                        title,
+                        provider_id,
+                        category,
+                        image_url
                     )
                 `)
                 .or(
@@ -127,6 +127,30 @@ async function loadBookings() {
 
         if (error) {
             throw error;
+        }
+
+        // ==========================
+        // FETCH PROVIDER PROFILES
+        // ==========================
+        const providerIds = [...new Set(bookings
+            .map(b => b.provider_id || b.providerId)
+            .filter(Boolean)
+        )];
+
+        let providerProfiles = {};
+        if (providerIds.length) {
+            const { data: profiles, error: profileError } =
+                await supabase
+                    .from("profiles")
+                    .select("id, email, full_name, profile_picture")
+                    .in("id", providerIds);
+
+            if (!profileError && profiles) {
+                providerProfiles = profiles.reduce((map, p) => {
+                    map[p.id] = p;
+                    return map;
+                }, {});
+            }
         }
 
         // ==========================
@@ -196,16 +220,14 @@ async function loadBookings() {
         for (const booking of bookings) {
 
             let service = null;
-            let provider = normalizeProfile(booking.profiles);
+            const providerId = booking.provider_id || booking.providerId;
+            const provider = providerProfiles[providerId] || null;
 
             // ==========================
             // GET SERVICE
             // ==========================
             const serviceId =
                 booking.service_id || booking.serviceId;
-
-            const providerId =
-                booking.provider_id || booking.providerId;
 
             if (serviceId) {
 
@@ -349,7 +371,7 @@ async function loadBookings() {
                                 <div>
                                     <p class="text-sm text-gray-500">Service Provider</p>
                                     <p class="font-semibold text-gray-900">
-                                        ${providerEmail}
+                                        ${providerName}
                                     </p>
                                 </div>
                             </div>
@@ -600,7 +622,7 @@ function updateStars() {
 // ==========================
 // SUBMIT REVIEW
 // ==========================
-async function submitReview() {
+async function submitReview() { 
 
     if (!selectedRating) {
 

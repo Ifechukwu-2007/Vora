@@ -14,7 +14,7 @@ These rules are already prepared in `firestore.rules`. You need to deploy them m
 5. Replace the rules with the content from `firestore.rules` file
 6. Click **Publish** button
 
-The key rules section for notifications:
+The key rules section for notifications: 
 ```firestore
 match /notifications/{notificationId} {
   allow read: if request.auth != null;

@@ -9,7 +9,7 @@ export async function testConnection() {
 export async function getRequests() {
   console.log("Supabase deprecated - using Firebase")
   return []
-}
+} 
 
 
 // Insert request - DEPRECATED

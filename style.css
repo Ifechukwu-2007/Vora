@@ -19,7 +19,7 @@
   width: 100%;
 }
 
-.form-input:focus {
+.form-input:focus { 
   outline: none;
   box-shadow: 0 0 0 1px #3b82f6;
   border-color: #3b82f6;

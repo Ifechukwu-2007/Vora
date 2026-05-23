@@ -505,4 +505,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadBookings();
     await loadOffers();
 
-});
+}); 

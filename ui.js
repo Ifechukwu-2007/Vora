@@ -4,4 +4,4 @@ export function safeQuery(selector) {
 
 export function safeQueryAll(selector) {
   return Array.from(document.querySelectorAll(selector));
-}
+}  

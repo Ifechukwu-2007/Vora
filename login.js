@@ -15,7 +15,7 @@ const buttonText = document.getElementById("buttonText");
 const spinner = document.getElementById("spinner");
 
 const errorAlert = document.getElementById("errorAlert");
-const errorMessage = document.getElementById("errorMessage");
+const errorMessage = document.getElementById("errorMessage"); 
 
 const successAlert = document.getElementById("successAlert");
 const successMessage = document.getElementById("successMessage");

@@ -75,4 +75,4 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
-initializeBadge();
+initializeBadge(); 

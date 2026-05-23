@@ -107,7 +107,7 @@ async function loadMyServices(container) {
 
           <div class="flex gap-2 pt-2">
 
-            <button
+            <button 
               class="edit-btn flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm"
               data-id="${service.id}"
             >

@@ -5,7 +5,7 @@ let currentUser = null;
 
 // =========================
 // INIT
-// =========================
+// ========================= 
 document.addEventListener("DOMContentLoaded", async () => {
 
     const logoutBtn = document.getElementById("logoutBtn");
@@ -161,7 +161,7 @@ function renderRequests(requests) {
         };
 
         container.appendChild(card);
-    });
+    }); 
 }
 
 // =========================

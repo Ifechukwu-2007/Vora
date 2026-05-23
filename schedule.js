@@ -75,4 +75,4 @@ async function deleteAvailability(id) {
   else await loadAvailability();
 }
 
-initSchedule();
+initSchedule(); 

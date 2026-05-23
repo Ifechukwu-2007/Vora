@@ -79,7 +79,7 @@ async function renderProvider(user, providerId, container) {
 
         if (chatsError) {
           throw chatsError;
-        }
+        } 
 
         const existingChat = (chats || []).find((chat) =>
           Array.isArray(chat.participants) && chat.participants.includes(providerId)

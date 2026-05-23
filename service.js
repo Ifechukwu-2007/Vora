@@ -191,7 +191,7 @@ function renderReviewSummary(reviews) {
     </div>
   `;
 }
-
+ 
 // ============================
 // RENDER REVIEWS
 // ============================

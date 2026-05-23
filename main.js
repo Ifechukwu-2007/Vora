@@ -14,8 +14,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadRequests()
 })
 
-// Render requests to page
-async function loadRequests() {
+// Render requests to page 
+async function loadRequests() { 
   const container = document.querySelector('#requests')
 
   if (!container) return
