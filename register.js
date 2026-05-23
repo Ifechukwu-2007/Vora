@@ -15,7 +15,7 @@ const successAlert = document.getElementById("successAlert");
 const successMessage = document.getElementById("successMessage");
 
 // ===============================
-// ALERT FUNCTIONS 
+// ALERT FUNCTIONS
 // ===============================
 
 function showError(message) {
