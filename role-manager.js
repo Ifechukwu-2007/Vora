@@ -12,7 +12,7 @@ export async function detectUserRole() {
         const { data: services, error: servError } = await supabase
             .from('services')
             .select('id', { count: 'exact', head: true })
-            .eq('provider_id', user.id);
+            .eq('provider_id', user.id); 
         
         return services && services.length > 0 ? 'provider' : 'customer';
     } catch (error) {

@@ -63,7 +63,7 @@ async function initPayoutSettings(form, bankInput, accountInput) {
                     user_id: currentUser.id,
                     bank_name: bankName,
                     account_number: accountNumber,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString() 
                 }, { onConflict: 'user_id' });
 
             if (error) throw error;

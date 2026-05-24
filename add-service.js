@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         backBtn.addEventListener('click', () => {
             LoadingSpinner.navigateTo('browse.html');
         });
-    }
+    } 
 
     // Handle image preview
     if (imageInput) {

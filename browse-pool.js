@@ -872,7 +872,7 @@ function formatDate(dateString) {
         month: 'long',
         day: 'numeric'
     });
-}
+} 
 
 // ==========================
 // FORMAT MONEY

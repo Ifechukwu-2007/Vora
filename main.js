@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load requests into UI
   loadRequests()
-})
+}) 
 
 // Render requests to page 
 async function loadRequests() { 

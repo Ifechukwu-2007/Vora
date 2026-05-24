@@ -12,7 +12,7 @@ These rules are already prepared in `firestore.rules`. You need to deploy them m
 3. Go to **Firestore Database** → **Rules** tab
 4. Click **Edit Rules**
 5. Replace the rules with the content from `firestore.rules` file
-6. Click **Publish** button
+6. Click **Publish** button 
 
 The key rules section for notifications: 
 ```firestore

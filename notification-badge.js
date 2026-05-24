@@ -12,7 +12,7 @@ async function loadUnreadCount() {
     .select('id', { count: 'exact', head: true })
     .or(`user_id.eq.${currentUser.id},userId.eq.${currentUser.id}`)
     .eq('read', false);
-
+ 
   if (error) {
     console.error('Error loading notification badge count:', error);
     return;

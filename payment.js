@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (provider) {
       if (provider.email) {
-        providerEmail = provider.email;
+        providerEmail = provider.email; 
       }
       if (provider.profile_picture) {
         providerPicture = provider.profile_picture;

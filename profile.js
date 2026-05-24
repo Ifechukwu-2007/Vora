@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const nameInput = document.getElementById("name");
     const emailInput = document.getElementById("email");
     const phoneInput = document.getElementById("phone");
-    const locationInput = document.getElementById("location");
+    const locationInput = document.getElementById("location"); 
 
     const profilePictureArea = document.getElementById("profilePictureArea");
     const profilePictureInput = document.getElementById("profilePictureInput");

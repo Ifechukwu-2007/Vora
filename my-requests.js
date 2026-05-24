@@ -286,7 +286,7 @@ function setupRealtime() {
     if (!currentUser) return;
 
     requestsChannel = supabase
-        .channel("requests-feed")
+        .channel("requests-feed") 
         .on("postgres_changes", { 
             event: "*",
             schema: "public",

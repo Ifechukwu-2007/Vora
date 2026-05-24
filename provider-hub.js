@@ -6,7 +6,7 @@ let offers = [];
 let bookings = [];
 let selectedOffer = null;
 
-const providerName = document.getElementById("providerName");
+const providerName = document.getElementById("providerName"); 
 const totalOffersEl = document.getElementById("totalOffers");
 const totalWinsEl = document.getElementById("totalWins");
 const successRateEl = document.getElementById("successRate");

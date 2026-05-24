@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     console.log("Request Pool loaded...");
 
-    // =========================
+    // ========================= 
     // AUTH CHECK
     // =========================
     const { data: userData, error: userErr } = await supabase.auth.getUser();

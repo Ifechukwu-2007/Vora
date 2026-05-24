@@ -1,5 +1,10 @@
 import os
-from supabase import create_client, Client
+
+try:
+    from supabase import create_client, Client
+except ImportError:
+    print("Error: supabase module not found. Install it using: pip install supabase")
+    exit(1)
 
 # Supabase credentials
 supabase_url = 'https://bbjyfmgisxzjruqkjxlo.supabase.co'
@@ -7,7 +12,7 @@ supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 
 supabase: Client = create_client(supabase_url, supabase_key)
 
-def check_users_table():
+def check_users_table(): 
     try:
         # Try to select from users table to see if it exists
         response = supabase.table('users').select('*').limit(1).execute()

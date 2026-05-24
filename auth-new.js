@@ -205,7 +205,7 @@ if (loginForm) {
 
 const registerForm = document.getElementById("registerForm");
 
-if (registerForm) {
+if (registerForm) { 
   const fullnameInput = document.getElementById("full_name");
   const emailInput = document.getElementById("email");
   const passwordInput = document.getElementById("password");

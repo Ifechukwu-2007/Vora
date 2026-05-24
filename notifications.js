@@ -5,7 +5,7 @@ const markAllBtn = document.getElementById('markAll');
 let currentUser = null;
 let notificationChannel = null;
 
-function getNotificationStyle(type) {
+function getNotificationStyle(type) { 
   const notificationStyles = {
     offer_received: { icon: '💰', color: 'bg-blue-50 border-blue-200', category: 'Offers' },
     offer_accepted: { icon: '✅', color: 'bg-green-50 border-green-200', category: 'Offers' },

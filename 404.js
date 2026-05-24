@@ -11,7 +11,7 @@ auth.onAuthStateChanged(async (user) => {
     const logoutBtn2 = document.getElementById('logoutBtn2');
 
     if (user) {
-        // User is logged in
+        // User is logged in 
         if (dashboardLink) dashboardLink.classList.remove('hidden');
         if (dashboardLink2) dashboardLink2.classList.remove('hidden');
         if (logoutBtn) logoutBtn.style.display = 'inline';

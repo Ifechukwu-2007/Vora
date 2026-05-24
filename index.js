@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function formatNGN(value) {
 
   return new Intl.NumberFormat(
-    'en-NG', 
+    'en-NG',  
     {
       maximumFractionDigits: 0
     }

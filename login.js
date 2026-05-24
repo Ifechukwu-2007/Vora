@@ -3,7 +3,7 @@ import { supabase } from './supabase.js';
 // ===============================
 // DOM ELEMENTS
 // ===============================
-
+ 
 const loginForm = document.getElementById("loginForm");
 
 const emailInput = document.getElementById("email");

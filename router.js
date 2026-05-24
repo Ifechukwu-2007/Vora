@@ -10,7 +10,7 @@ export function initializeRouter() {
         message: "my-messages.html",
         provider: "add-service.html"
       };
-
+ 
       if (routes[action]) {
         LoadingSpinner.navigateTo(routes[action]);
       } else {

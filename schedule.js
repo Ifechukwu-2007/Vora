@@ -11,7 +11,7 @@ async function initSchedule() {
   }
 
   currentUser = user;
-  setupLogout();
+  setupLogout(); 
 }
 
 function setupLogout() {

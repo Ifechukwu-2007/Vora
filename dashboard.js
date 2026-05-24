@@ -496,7 +496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             offerModal.classList.add('hidden');
         }
     });
-
+ 
     // =========================
     // INIT
     // =========================

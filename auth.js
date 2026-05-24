@@ -359,7 +359,7 @@ async function handleLogout() {
     showError("Logout failed. Please try again.");
   }
 }
-
+ 
 if (logoutBtn) {
   logoutBtn.addEventListener("click", handleLogout);
 }

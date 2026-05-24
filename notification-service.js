@@ -104,7 +104,7 @@ class NotificationService {
         console.error('Error deleting notification:', error);
         return false;
       }
-
+ 
       return true;
     } catch (err) {
       console.error('Error in deleteNotification:', err);

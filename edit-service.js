@@ -146,5 +146,5 @@ async function loadService(serviceId) {
     .single();
 
   if (error) throw error;
-  return data;
+  return data; 
 } 

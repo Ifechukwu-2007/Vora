@@ -223,7 +223,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             submitBtn.disabled = false;
             submitBtn.innerHTML = "Post Request";
 
-        }
+        } 
 
     });
 

@@ -593,7 +593,7 @@ function updateStars() {
         document.querySelectorAll(
             "#reviewModal .star"
         );
-
+ 
     stars.forEach((star, idx) => {
 
         if (idx < selectedRating) {

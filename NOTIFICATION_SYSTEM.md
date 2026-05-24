@@ -10,7 +10,7 @@ A centralized service that handles all notification creation with preset methods
 
 #### Offer-Related Notifications
 - `notifyOfferReceived()` - When a provider sends an offer
-- `notifyOfferAccepted()` - When an offer is accepted
+- `notifyOfferAccepted()` - When an offer is accepted 
 - `notifyOfferRejected()` - When an offer is declined 
 
 #### Booking-Related Notifications

@@ -13,7 +13,7 @@ let reviewsMap = {};
 
 const CACHE_KEY = "browse_services_cache";
 const CACHE_DURATION = 5 * 60 * 1000;
- 
+  
 // =========================
 // PLATFORM SETTINGS
 // =========================

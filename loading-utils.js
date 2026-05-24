@@ -8,7 +8,7 @@ export const LoadingSpinner = {
   init() {
     if (document.getElementById('globalLoadingSpinner')) return;
     
-    const spinner = document.createElement('div');
+    const spinner = document.createElement('div'); 
     spinner.id = 'globalLoadingSpinner';
     spinner.innerHTML = `
       <div class="fixed inset-0 bg-black bg-opacity-40 z-[9999] flex items-center justify-center">

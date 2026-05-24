@@ -183,7 +183,7 @@ async function loadProviderBookings(providerId) {
 
                 const { data: serviceData } = await supabase
                     .from("services")
-                    .select("*")
+                    .select("*") 
                     .eq("id", booking.service_id)
                     .maybeSingle();
 
