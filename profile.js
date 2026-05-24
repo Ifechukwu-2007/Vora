@@ -338,7 +338,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 backToDashboardBtn.classList.add("hidden");
                 backToDashboardBtn.style.display = "none";
             }
-
+ 
         } catch (error) {
 
             console.error("❌ checkUserServices error:", error);
