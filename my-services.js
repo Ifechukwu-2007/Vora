@@ -1,5 +1,6 @@
 import { supabase } from "./supabase.js";
 import { LoadingSpinner } from "./loading-utils.js";
+import { updateProfilePictureInHeader } from './auth.js';
 
 // =========================
 // AUTH + INIT
@@ -9,6 +10,7 @@ let currentUser = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const container = document.getElementById("myServicesContainer");
+  await updateProfilePictureInHeader();
 
   // =========================
   // GET USER
