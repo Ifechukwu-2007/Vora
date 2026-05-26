@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
       }
 
-      const { 
+      const {
         data: services,
         error
       } = await query;

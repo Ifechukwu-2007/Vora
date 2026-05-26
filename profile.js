@@ -334,7 +334,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                 console.warn("Back To Dashboard button not found");
                 return;
             }
- 
             // =========================
             // CHECK SERVICES TABLE
             // =========================
