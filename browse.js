@@ -446,11 +446,7 @@ function render(services, container) {
                             ${averageRating}/5 · ${stats.count} review${stats.count > 1 ? "s" : ""}
                         </div>
                         `
-                        : `
-                        <div class="text-gray-400">
-                            No reviews yet
-                        </div>
-                        `
+                        : ``
                     }
 
                 </div>

@@ -60,15 +60,39 @@ async function loadService() {
 
     const providerId = service.provider_id;
 
-    // FETCH REVIEWS (public - for display only, not submission)
+    // FETCH SERVICE PROVIDER'S PROFILE
+    const { data: providerProfile, error: providerError } = await supabase
+      .from('users')
+      .select('full_name, email, profile_picture')
+      .eq('id', providerId)
+      .single();
+
+    if (providerError) {
+      console.error('Failed to load provider profile', providerError);
+    }
+
+    // 1) FETCH REVIEWS ONLY
     const { data: reviews, error: reviewsError } = await supabase
       .from('reviews')
-      .select('*, user_profile:user_id (id, full_name, profile_picture, email)')
+      .select('*')
       .eq('service_id', serviceId)
       .order('created_at', { ascending: false });
 
-    if (reviewsError) {
-      console.error('Failed to load reviews', reviewsError);
+    if (reviewsError) console.error('Failed to load reviews', reviewsError);
+
+    // 2) FETCH REVIEWER PROFILES
+    const userIds = [...new Set((reviews || []).map(r => r.user_id).filter(Boolean))];
+
+    let usersById = {};
+    if (userIds.length) {
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, full_name, email, profile_picture')
+        .in('id', userIds);
+
+      if (usersError) console.error('Failed to load reviewer profiles', usersError);
+
+      usersById = Object.fromEntries((users || []).map(u => [u.id, u]));
     }
 
     // IMAGE
@@ -82,6 +106,30 @@ async function loadService() {
 
     serviceContainer.innerHTML = `
       <div class="space-y-6 pb-24">
+
+        <!-- PROVIDER PROFILE SECTION -->
+        <a href="service-provider.html?id=${providerId}" class="block hover:shadow-lg transition">
+          <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100 hover:border-blue-300 cursor-pointer">
+            <div class="flex items-center gap-4">
+              <img
+                src="${
+                  providerProfile?.profile_picture ||
+                  'https://ui-avatars.com/api/?name=' + encodeURIComponent(providerProfile?.full_name || 'Service Provider')
+                }"
+                alt="${providerProfile?.full_name || 'Service Provider'}"
+                class="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
+              />
+              <div>
+                <p class="text-sm text-gray-600">Service Provider</p>
+                <h3 class="text-xl font-bold text-gray-900">
+                ${providerProfile?.full_name || 'Service Provider'}
+              </h3>
+              <p class="text-blue-600 text-sm">
+                ${providerProfile?.email || 'No email'}
+              </p>
+            </div>
+          </div>
+        </a>
 
         <img
           src="${serviceImage}"
@@ -139,7 +187,7 @@ async function loadService() {
     }
 
     renderReviewSummary(reviews || []);
-    renderReviews(reviews || []);
+    renderReviews(reviews || [], usersById);
 
   } catch (err) {
     console.error(err);
@@ -197,7 +245,7 @@ function renderReviewSummary(reviews) {
 // RENDER REVIEWS (Display Only)
 // ============================
 
-function renderReviews(reviews) {
+function renderReviews(reviews, usersById) {
   if (!reviews.length) {
     reviewsContainer.innerHTML = '';
     return;
@@ -206,20 +254,20 @@ function renderReviews(reviews) {
   reviewsContainer.innerHTML = '';
 
   reviews.forEach(r => {
-    const reviewer = normalizeProfile(r.user_profile) || r.user_profile || null;
+    const reviewer = usersById[r.user_id] || null;
     const card = document.createElement('div');
 
     card.className = 'border-b py-4 flex gap-3 review-card';
 
     card.innerHTML = `
       <img
-        src="${reviewer?.profile_picture || reviewer?.avatar_url || 'https://placehold.co/50x50'}"
+        src="${reviewer?.profile_picture || 'https://placehold.co/50x50'}"
         class="w-10 h-10 rounded-full object-cover"
       />
 
       <div class="flex-1">
         <p class="font-semibold text-gray-900">
-          ${reviewer?.full_name || reviewer?.email || 'Anonymous'}
+          ${reviewer?.full_name || 'Anonymous'}
         </p>
 
         <div class="flex items-center gap-2 text-sm text-gray-600">

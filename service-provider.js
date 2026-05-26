@@ -7,8 +7,8 @@ function getNameFromUser(user) {
 
 async function getProvider(providerId) {
   const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, location')
+    .from('users')
+    .select('id, full_name, email, location, profile_picture')
     .eq('id', providerId)
     .maybeSingle();
 
@@ -24,7 +24,7 @@ async function getProviderServices(providerId) {
   const { data, error } = await supabase
     .from('services')
     .select('*')
-    .or(`provider_id.eq.${providerId},user_id.eq.${providerId},providerId.eq.${providerId},userId.eq.${providerId}`);
+    .eq('provider_id', providerId);
 
   if (error) {
     console.error('Error loading provider services:', error);
@@ -37,14 +37,19 @@ async function getProviderServices(providerId) {
 async function renderProvider(user, providerId, container) {
   const providerName = getNameFromUser(user);
   const providerLocation = user?.location || 'Not specified';
+  const profilePicture = user?.profile_picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(providerName);
 
   container.innerHTML = `
     <div class="border-b pb-6">
-      <h2 class="text-3xl font-bold mb-4">${providerName}</h2>
-      <p class="text-lg text-gray-700 mb-2"><strong>Email:</strong> ${user?.email || 'Not provided'}</p>
-      <p class="text-lg text-gray-700 mb-2"><strong>Location:</strong> ${providerLocation}</p>
+      <div class="flex items-center gap-4 mb-4">
+        <img src="${profilePicture}" alt="${providerName}" class="w-20 h-20 rounded-full object-cover border-2 border-gray-300" />
+        <div>
+          <h2 class="text-3xl font-bold mb-2">${providerName}</h2>
+          <p class="text-lg text-gray-700 mb-1"><strong>Email:</strong> ${user?.email || 'Not provided'}</p>
+          <p class="text-lg text-gray-700"><strong>Location:</strong> ${providerLocation}</p>
+        </div>
+      </div>
       <div id="average-rating" class="text-lg text-gray-700 mb-2"></div>
-      <button id="messageProviderBtn" class="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors">Message</button>
     </div>
     <div id="provider-services-container" class="mt-6">
       <h3 class="text-2xl font-bold mb-4">Services Offered</h3>
@@ -55,66 +60,6 @@ async function renderProvider(user, providerId, container) {
       <div id="reviews-list" class="space-y-4"></div>
     </div>
   `;
-
-  const messageBtn = document.getElementById('messageProviderBtn');
-  if (messageBtn) {
-    messageBtn.addEventListener('click', async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) {
-        alert('You must be logged in to send a message.');
-        window.location.href = `login.html?redirect=${encodeURIComponent(window.location.href)}`;
-        return;
-      }
-
-      if (user.id === providerId) {
-        alert('You cannot message your own service.');
-        return;
-      }
-
-      try {
-        const { data: chats, error: chatsError } = await supabase
-          .from('chats')
-          .select('*')
-          .contains('participants', [user.id]);
-
-        if (chatsError) {
-          throw chatsError;
-        } 
-
-        const existingChat = (chats || []).find((chat) =>
-          Array.isArray(chat.participants) && chat.participants.includes(providerId)
-        );
-
-        if (existingChat) {
-          window.location.href = `chat.html?id=${existingChat.id}`;
-          return;
-        }
-
-        const { data: newChat, error: createError } = await supabase
-          .from('chats')
-          .insert([
-            {
-              participants: [user.id, providerId],
-              service_id: null,
-              last_message: 'Chat initiated.',
-              lastMessage: 'Chat initiated.',
-              last_timestamp: new Date().toISOString(),
-            }
-          ])
-          .select('id')
-          .single();
-
-        if (createError || !newChat) {
-          throw createError || new Error('Unable to create chat.');
-        }
-
-        window.location.href = `chat.html?id=${newChat.id}`;
-      } catch (error) {
-        console.error('Error starting chat:', error);
-        alert('There was an error trying to start a chat. Please try again.');
-      }
-    });
-  }
 
   const services = await getProviderServices(providerId);
   const servicesGrid = document.getElementById('services-grid');
@@ -143,7 +88,20 @@ async function loadReviews(providerId) {
   const { data: reviews, error } = await supabase
     .from('reviews')
     .select('*')
-    .or(`provider_id.eq.${providerId},providerId.eq.${providerId}`);
+    .eq('provider_id', providerId);
+
+  // Fetch reviewer profiles
+  let usersById = {};
+  if (reviews && reviews.length > 0) {
+    const userIds = [...new Set(reviews.map(r => r.user_id).filter(Boolean))];
+    if (userIds.length) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, full_name, profile_picture')
+        .in('id', userIds);
+      usersById = Object.fromEntries((users || []).map(u => [u.id, u]));
+    }
+  }
 
   const reviewsList = document.getElementById('reviews-list');
   const averageRatingDiv = document.getElementById('average-rating');
@@ -151,8 +109,8 @@ async function loadReviews(providerId) {
   if (!reviewsList || !averageRatingDiv) return;
 
   if (error || !reviews || reviews.length === 0) {
-    reviewsList.innerHTML = '<p>No reviews yet.</p>';
-    averageRatingDiv.innerHTML = '<strong>Average Rating:</strong> No reviews yet';
+    reviewsList.innerHTML = '';
+    averageRatingDiv.innerHTML = '';
     return;
   }
 
@@ -165,7 +123,24 @@ async function loadReviews(providerId) {
     totalRating += rating;
     reviewCount += 1;
 
+    const reviewer = usersById[review.user_id];
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    const profilePic = reviewer?.profile_picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(reviewer?.full_name || 'Reviewer');
+
+    reviewsHtml += `
+      <div class="border-b py-4 flex gap-3">
+        <img src="${profilePic}" alt="${reviewer?.full_name || 'Reviewer'}" class="w-10 h-10 rounded-full object-cover" />
+        <div class="flex-1">
+          <p class="font-semibold text-gray-900">${reviewer?.full_name || 'Anonymous'}</p>
+          <div class="flex items-center gap-2 text-sm text-gray-600">
+            <span>${stars}</span>
+            <span>${new Date(review.created_at).toLocaleDateString()}</span>
+          </div>
+          <p class="text-gray-700 mt-2">${review.comment || ''}</p>
+        </div>
+      </div>
+    `;
+  }
 
   const averageRating = (totalRating / reviewCount).toFixed(1);
   const averageStars = '★'.repeat(Math.round(averageRating)) + '☆'.repeat(5 - Math.round(averageRating));
@@ -222,5 +197,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     serviceProviderContainer.innerHTML = '<p>Error loading details. Please check your connection and try again.</p>';
   }
 });
-}
- 

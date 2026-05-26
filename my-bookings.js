@@ -28,15 +28,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 // ==========================
 function setupLogout() {
 
-    const logoutBtn = document.getElementById("logoutBtn");
-    const logoutBtnSideMenu = document.getElementById("logoutBtnSideMenu");
+    const logoutBtn =
+        document.getElementById("logoutBtn");
+
+    const logoutBtnSideMenu =
+        document.getElementById("logoutBtnSideMenu");
 
     async function logout() {
+
         await supabase.auth.signOut();
+
         window.location.href = "login.html";
     }
 
     logoutBtn?.addEventListener("click", logout);
+
     logoutBtnSideMenu?.addEventListener("click", logout);
 }
 
@@ -45,17 +51,29 @@ function setupLogout() {
 // ==========================
 async function loadBookings() {
 
-    const container = document.getElementById("bookingsContainer");
+    const container =
+        document.getElementById("bookingsContainer");
 
     try {
 
+        // LOADING
         container.innerHTML = `
             <div class="bg-white rounded-xl p-10 text-center shadow">
-                <div class="text-5xl mb-4">⏳</div>
-                <p class="text-gray-600 text-lg">Loading bookings...</p>
+
+                <div class="text-5xl mb-4">
+                    ⏳
+                </div>
+
+                <p class="text-gray-600 text-lg">
+                    Loading bookings...
+                </p>
+
             </div>
         `;
 
+        // ==========================
+        // FETCH BOOKINGS
+        // ==========================
         const { data: bookings, error } = await supabase
             .from("bookings")
             .select("*")
@@ -64,92 +82,195 @@ async function loadBookings() {
 
         if (error) throw error;
 
+        // EMPTY STATE
         if (!bookings || bookings.length === 0) {
+
             container.innerHTML = `
                 <div class="bg-white rounded-xl p-10 text-center shadow">
-                    <div class="text-6xl mb-4">📭</div>
-                    <h2 class="text-2xl font-bold text-gray-800 mb-3">No Bookings Yet</h2>
-                    <p class="text-gray-500">Your bookings will appear here.</p>
+
+                    <div class="text-6xl mb-4">
+                        📭
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-gray-800 mb-3">
+                        No Bookings Yet
+                    </h2>
+
+                    <p class="text-gray-500">
+                        Your bookings will appear here.
+                    </p>
+
                 </div>
             `;
+
             return;
         }
 
+        // ==========================
+        // FETCH PROVIDERS
+        // ==========================
         const providerIds = [
-            ...new Set(bookings.map(b => b.provider_id).filter(Boolean))
+            ...new Set(
+                bookings
+                    .map(b => b.provider_id)
+                    .filter(Boolean)
+            )
         ];
 
         let providersById = {};
 
         if (providerIds.length > 0) {
-            const { data: providers } = await supabase
+
+            const {
+                data: providers,
+                error: providersError
+            } = await supabase
                 .from("users")
-                .select("id, full_name, email, location, profile_picture")
+                .select(`
+                    id,
+                    full_name,
+                    email,
+                    location,
+                    profile_picture
+                `)
                 .in("id", providerIds);
 
+            if (providersError) {
+                console.error(
+                    "Providers fetch error:",
+                    providersError
+                );
+            }
+
             providersById = Object.fromEntries(
-                (providers || []).map(p => [p.id, p])
+                (providers || []).map(provider => [
+                    String(provider.id),
+                    provider
+                ])
+            );
+
+            console.log("Providers fetched:", providers);
+            console.log("ProvidersById object:", providersById);
+        }
+
+        // ==========================
+        // FETCH SERVICES
+        // ==========================
+        const serviceIds = bookings
+            .map(b => b.service_id)
+            .filter(Boolean);
+
+        let servicesById = {};
+
+        if (serviceIds.length > 0) {
+
+            const { data: services } = await supabase
+                .from("services")
+                .select(`
+                    id,
+                    title,
+                    description,
+                    location,
+                    price
+                `)
+                .in("id", serviceIds);
+
+            servicesById = Object.fromEntries(
+                (services || []).map(service => [
+                    service.id,
+                    service
+                ])
             );
         }
 
         // ==========================
-        // FETCH SERVICES AND REQUESTS
+        // FETCH REQUESTS
         // ==========================
-        const serviceIds = bookings.map(b => b.service_id).filter(Boolean);
-        const requestIds = bookings.map(b => b.request_id).filter(Boolean);
+        const requestIds = bookings
+            .map(b => b.request_id)
+            .filter(Boolean);
 
-        let servicesById = {};
         let requestsById = {};
 
-        if (serviceIds.length > 0) {
-            const { data: services } = await supabase
-                .from("services")
-                .select("id, title, description, location, price")
-                .in("id", serviceIds);
-
-            if (services) {
-                servicesById = Object.fromEntries(
-                    services.map(s => [s.id, s])
-                );
-            }
-        }
-
         if (requestIds.length > 0) {
+
             const { data: requests } = await supabase
                 .from("requests")
-                .select("id, title, description, location, budget")
+                .select(`
+                    id,
+                    title,
+                    description,
+                    location,
+                    budget
+                `)
                 .in("id", requestIds);
 
-            if (requests) {
-                requestsById = Object.fromEntries(
-                    requests.map(r => [r.id, r])
-                );
-            }
+            requestsById = Object.fromEntries(
+                (requests || []).map(request => [
+                    request.id,
+                    request
+                ])
+            );
         }
 
+        // CLEAR CONTAINER
         container.innerHTML = "";
 
+        // ==========================
+        // LOOP BOOKINGS
+        // ==========================
         bookings.forEach(booking => {
 
-            // Get service or request details
-            const serviceDetails = servicesById[booking.service_id];
-            const requestDetails = requestsById[booking.request_id];
-            const details = serviceDetails || requestDetails || {};
+            console.log("Current booking:", booking);
+            console.log("Provider ID from booking:", booking.provider_id);
 
-            const provider = normalizeProfile(providersById[booking.provider_id]);
+            // SERVICE / REQUEST
+            const serviceDetails =
+                servicesById[booking.service_id];
 
-            const providerName = provider?.full_name || "Service Provider";
-            const providerEmail = provider?.email || "No email";
-            const providerLocation = provider?.location || "Location not available";
+            const requestDetails =
+                requestsById[booking.request_id];
+
+            const details =
+                serviceDetails ||
+                requestDetails ||
+                {};
+
+            // PROVIDER
+            const provider =
+                providersById[String(booking.provider_id)] || null;
+
+            console.log(`Looking for provider with ID: ${String(booking.provider_id)}, found:`, provider);
+
+            const providerName =
+                provider?.full_name ||
+                "Unknown Provider";
+
+            const providerEmail =
+                provider?.email ||
+                "No Email";
+
+            const providerLocation =
+                provider?.location ||
+                "Location not available";
 
             const providerPicture =
-                provider?.profile_picture ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}`;
+                provider?.profile_picture &&
+                provider.profile_picture.trim() !== ""
+                    ? provider.profile_picture
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}&background=random`;
 
-            const card = document.createElement("div");
+            // CARD
+            const card =
+                document.createElement("div");
 
             card.className = `
-                bg-white rounded-2xl shadow-md p-6 hover:shadow-xl transition
+                bg-white
+                rounded-2xl
+                shadow-md
+                p-6
+                hover:shadow-xl
+                transition
             `;
 
             card.innerHTML = `
@@ -163,45 +284,99 @@ async function loadBookings() {
 
                             <img
                                 src="${providerPicture}"
-                                class="w-16 h-16 rounded-full object-cover border"
+                                alt="${providerName}"
+                                class="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                                onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}'"
                             >
 
-                            <div>
-                                <p class="text-sm text-gray-500">Service Provider</p>
-                                <h2 class="text-xl font-bold text-gray-900">${providerName}</h2>
-                                <p class="text-blue-600 text-sm">${providerEmail}</p>
+                            <div class="flex-1">
+
+                                <p class="text-sm text-gray-500">
+                                    Service Provider
+                                </p>
+
+                                <h2 class="text-xl font-bold text-gray-900">
+                                    ${providerName}
+                                </h2>
+
+                                <p class="text-blue-600 text-sm break-all">
+                                    ${providerEmail}
+                                </p>
+
                             </div>
 
                         </div>
 
                         <!-- TITLE -->
-                        <h3 class="text-2xl font-bold mb-3">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-3">
                             ${details.title || "Untitled Booking"}
                         </h3>
 
                         <!-- DESCRIPTION -->
-                        <p class="text-gray-600 mb-5">
+                        <p class="text-gray-600 leading-relaxed mb-5">
                             ${details.description || "No description"}
                         </p>
 
                         <!-- DETAILS -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+                            <!-- LOCATION -->
                             <div class="bg-gray-50 rounded-xl p-4">
-                                <p class="text-sm text-gray-500 mb-1">📍 Location</p>
-                                <p class="font-semibold">${details.location || "No location"}</p>
-                            </div>
 
-                            <div class="bg-gray-50 rounded-xl p-4">
-                                <p class="text-sm text-gray-500 mb-1">💰 Agreed Price</p>
-                                <p class="font-bold text-green-600 text-xl">
-                                    ₦${Number(booking.total_price || details.price || 0).toLocaleString()}
+                                <p class="text-sm text-gray-500 mb-1">
+                                    📍 Location
                                 </p>
+
+                                <p class="font-semibold text-gray-900">
+                                    ${details.location || "No location"}
+                                </p>
+
                             </div>
 
+                            <!-- PRICE -->
                             <div class="bg-gray-50 rounded-xl p-4">
-                                <p class="text-sm text-gray-500 mb-1">🌍 Provider Location</p>
-                                <p class="font-semibold">${providerLocation}</p>
+
+                                <p class="text-sm text-gray-500 mb-1">
+                                    💰 Agreed Price
+                                </p>
+
+                                <p class="font-bold text-green-600 text-xl">
+                                    ₦${Number(
+                                        booking.total_price ||
+                                        details.price ||
+                                        details.budget ||
+                                        0
+                                    ).toLocaleString()}
+                                </p>
+
+                            </div>
+
+                            <!-- PROVIDER LOCATION -->
+                            <div class="bg-gray-50 rounded-xl p-4">
+
+                                <p class="text-sm text-gray-500 mb-1">
+                                    🌍 Provider Location
+                                </p>
+
+                                <p class="font-semibold text-gray-900">
+                                    ${providerLocation}
+                                </p>
+
+                            </div>
+
+                            <!-- BOOKING DATE -->
+                            <div class="bg-gray-50 rounded-xl p-4">
+
+                                <p class="text-sm text-gray-500 mb-1">
+                                    📅 Booking Date
+                                </p>
+
+                                <p class="font-semibold text-gray-900">
+                                    ${new Date(
+                                        booking.created_at
+                                    ).toLocaleDateString()}
+                                </p>
+
                             </div>
 
                         </div>
@@ -228,12 +403,16 @@ async function loadBookings() {
             container.appendChild(card);
         });
 
+        // ==========================
         // REVIEW BUTTONS
-        document.querySelectorAll(".review-btn").forEach(button => {
+        // ==========================
+        document.querySelectorAll(".review-btn")
+        .forEach(button => {
 
             button.addEventListener("click", () => {
 
-                selectedBooking = button.dataset.booking;
+                selectedBooking =
+                    button.dataset.booking;
 
                 openReviewModal(
                     button.dataset.provider,
@@ -244,13 +423,26 @@ async function loadBookings() {
 
     } catch (error) {
 
+        console.error(
+            "Load bookings error:",
+            error
+        );
+
         container.innerHTML = `
             <div class="bg-white rounded-xl p-10 text-center shadow">
-                <div class="text-6xl mb-4">❌</div>
+
+                <div class="text-6xl mb-4">
+                    ❌
+                </div>
+
                 <h2 class="text-2xl font-bold text-red-600 mb-3">
                     Failed to load bookings
                 </h2>
-                <p class="text-gray-500">${error.message}</p>
+
+                <p class="text-gray-500">
+                    ${error.message}
+                </p>
+
             </div>
         `;
     }
@@ -261,35 +453,71 @@ async function loadBookings() {
 // ==========================
 function setupReviewModal() {
 
-    const modal = document.getElementById("reviewModal");
-    const closeBtn = document.getElementById("closeReviewModal");
-    const cancelBtn = document.getElementById("cancelReview");
-    const submitBtn = document.getElementById("submitReview");
-    const stars = document.querySelectorAll(".star");
+    const modal =
+        document.getElementById("reviewModal");
 
+    const closeBtn =
+        document.getElementById("closeReviewModal");
+
+    const cancelBtn =
+        document.getElementById("cancelReview");
+
+    const submitBtn =
+        document.getElementById("submitReview");
+
+    const stars =
+        document.querySelectorAll(".star");
+
+    // CLOSE MODAL
     function closeModal() {
+
         modal.classList.add("hidden");
+
         selectedRating = 0;
-        document.getElementById("reviewComment").value = "";
+
+        document.getElementById(
+            "reviewComment"
+        ).value = "";
+
+        stars.forEach(star => {
+
+            star.classList.remove("text-yellow-400");
+            star.classList.add("text-gray-300");
+        });
     }
 
     closeBtn?.addEventListener("click", closeModal);
+
     cancelBtn?.addEventListener("click", closeModal);
 
+    // STAR RATING
     stars.forEach(star => {
+
         star.addEventListener("click", () => {
 
-            selectedRating = Number(star.dataset.rating);
+            selectedRating =
+                Number(star.dataset.rating);
 
             stars.forEach(s => {
-                const rating = Number(s.dataset.rating);
 
-                s.classList.toggle("text-yellow-400", rating <= selectedRating);
-                s.classList.toggle("text-gray-300", rating > selectedRating);
+                const rating =
+                    Number(s.dataset.rating);
+
+                if (rating <= selectedRating) {
+
+                    s.classList.remove("text-gray-300");
+                    s.classList.add("text-yellow-400");
+
+                } else {
+
+                    s.classList.remove("text-yellow-400");
+                    s.classList.add("text-gray-300");
+                }
             });
         });
     });
 
+    // SUBMIT REVIEW
     submitBtn?.addEventListener("click", async () => {
 
         try {
@@ -299,33 +527,53 @@ function setupReviewModal() {
                 return;
             }
 
-            const comment = document.getElementById("reviewComment").value;
+            const comment =
+                document.getElementById(
+                    "reviewComment"
+                ).value;
 
-            const providerId = modal.dataset.provider;
-            const serviceId = modal.dataset.service;
+            const providerId =
+                modal.dataset.provider;
+
+            const serviceId =
+                modal.dataset.service;
 
             submitBtn.disabled = true;
-            submitBtn.textContent = "Submitting...";
 
-            const { error } = await supabase.from("reviews").insert({
-                booking_id: selectedBooking,
-                user_id: currentUser.id,
-                provider_id: providerId,
-                service_id: serviceId,
-                rating: selectedRating,
-                comment
-            });
+            submitBtn.textContent =
+                "Submitting...";
+
+            const { error } = await supabase
+                .from("reviews")
+                .insert({
+                    booking_id: selectedBooking,
+                    user_id: currentUser.id,
+                    provider_id: providerId,
+                    service_id: serviceId,
+                    rating: selectedRating,
+                    comment
+                });
 
             if (error) throw error;
 
-            alert("Review submitted successfully!");
+            alert(
+                "Review submitted successfully!"
+            );
+
             closeModal();
 
         } catch (error) {
+
+            console.error(error);
+
             alert(error.message);
+
         } finally {
+
             submitBtn.disabled = false;
-            submitBtn.textContent = "Submit Review";
+
+            submitBtn.textContent =
+                "Submit Review";
         }
     });
 }
@@ -335,18 +583,14 @@ function setupReviewModal() {
 // ==========================
 function openReviewModal(providerId, serviceId) {
 
-    const modal = document.getElementById("reviewModal");
+    const modal =
+        document.getElementById("reviewModal");
 
-    modal.dataset.provider = providerId;
-    modal.dataset.service = serviceId;
+    modal.dataset.provider =
+        providerId;
+
+    modal.dataset.service =
+        serviceId;
 
     modal.classList.remove("hidden");
-}
-
-// ==========================
-// NORMALIZE PROFILE
-// ==========================
-function normalizeProfile(profile) {
-    if (!profile) return null;
-    return Array.isArray(profile) ? profile[0] : profile;
 }
