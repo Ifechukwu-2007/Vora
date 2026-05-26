@@ -13,6 +13,8 @@ const serviceId = params.get("id");
 // ============================
 
 const serviceContainer = document.getElementById("service-container");
+const reviewsContainer = document.getElementById("reviews-container");
+const serviceReviewsWrapper = document.getElementById("service-reviews");
 
 // ============================
 // AUTH CHECK
@@ -21,6 +23,11 @@ const serviceContainer = document.getElementById("service-container");
 // Try to get session but don't require it for viewing service details/reviews
 const { data: sessionData } = await supabase.auth.getSession();
 const currentUser = sessionData?.session?.user || null;
+
+function normalizeProfile(profile) {
+  if (!profile) return null;
+  return Array.isArray(profile) ? profile[0] : profile;
+}
 
 
 
@@ -52,6 +59,17 @@ async function loadService() {
     }
 
     const providerId = service.provider_id;
+
+    // FETCH REVIEWS (public - for display only, not submission)
+    const { data: reviews, error: reviewsError } = await supabase
+      .from('reviews')
+      .select('*, user_profile:user_id (id, full_name, profile_picture, email)')
+      .eq('service_id', serviceId)
+      .order('created_at', { ascending: false });
+
+    if (reviewsError) {
+      console.error('Failed to load reviews', reviewsError);
+    }
 
     // IMAGE
     const serviceImage =
