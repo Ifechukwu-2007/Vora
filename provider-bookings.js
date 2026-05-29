@@ -1,4 +1,5 @@
 import { supabase } from "./supabase.js";
+import { updateProfilePictureInHeader } from './auth.js';
 
 function normalizeProfile(profile) {
     if (!profile) return null;
@@ -16,6 +17,7 @@ let serviceReviewStats = {};
 // INIT
 // ===============================
 document.addEventListener("DOMContentLoaded", async () => {
+    await updateProfilePictureInHeader();
     await checkAuth();
     setupLogout();
 });
@@ -82,20 +84,36 @@ async function loadProviderBookings(providerId) {
         // ====================================
         const { data: bookings, error } = await supabase
             .from("bookings")
-            .select(`
-                *,
-                profiles:user_id (
-                    id,
-                    email,
-                    full_name,
-                    profile_picture
-                )
-            `)
+            .select("*")
             .eq("provider_id", providerId)
             .order("created_at", { ascending: false });
 
         if (error) {
             throw error;
+        }
+
+        // ====================================
+        // FETCH CUSTOMER PROFILES
+        // ====================================
+        let customerProfiles = {};
+        if (bookings && bookings.length > 0) {
+            const customerIds = [...new Set(bookings
+                .map(b => b.user_id)
+                .filter(Boolean)
+            )];
+
+            if (customerIds.length > 0) {
+                const { data: profiles } = await supabase
+                    .from("profiles")
+                    .select("id, email, full_name, profile_picture")
+                    .in("id", customerIds);
+
+                if (profiles) {
+                    profiles.forEach(profile => {
+                        customerProfiles[profile.id] = profile;
+                    });
+                }
+            }
         }
 
         // ====================================
@@ -167,27 +185,29 @@ async function loadProviderBookings(providerId) {
 
                 const { data: serviceData } = await supabase
                     .from("services")
-                    .select("*")
+                    .select("*") 
                     .eq("id", booking.service_id)
                     .maybeSingle();
 
-                service = serviceData;
+                service = serviceData; 
             }
 
             // ====================================
-            // GET CUSTOMER PROFILE (from join)
+            // GET CUSTOMER PROFILE (from map)
             // ====================================
-            let customer = normalizeProfile(booking.profiles);
+            let customer = customerProfiles[booking.user_id];
 
             // ====================================
             // GET CUSTOMER AUTH EMAIL
             // ====================================
             let customerEmail = customer?.email || "No email";
 
+            let customerName = customer?.full_name || "Customer";
+
             let customerPicture = customer?.profile_picture || "https://ui-avatars.com/api/?name=User";
 
             // ====================================
-            // VALUES
+            // VALUES 
             // ====================================
             const serviceTitle =
                 service?.title || "Service";
@@ -303,6 +323,9 @@ async function loadProviderBookings(providerId) {
                                 <div>
                                     <p class="text-sm text-gray-500">Customer</p>
                                     <p class="font-semibold text-gray-900">
+                                        ${customerName}
+                                    </p>
+                                    <p class="text-sm text-gray-500">
                                         ${customerEmail}
                                     </p>
                                 </div>
