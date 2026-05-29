@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const { data: sessionData } = await supabase.auth.getSession();
 
     if (!sessionData.session) {
-        window.location.href = "login";
+        window.location.href = "login.html";
         return;
     }
 
@@ -38,7 +38,7 @@ function setupLogout() {
 
         await supabase.auth.signOut();
 
-        window.location.href = "login";
+        window.location.href = "login.html";
     }
 
     logoutBtn?.addEventListener("click", logout);

@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       alert('Service updated successfully!');
       // Redirect back to a page (adjust if you have a specific route)
-      window.location.href = 'my-services';
+      window.location.href = 'my-services.html';
     } catch (err) {
       console.error('Full error:', err);
       alert(`Failed to update service: ${err.message || 'Please try again.'}`);

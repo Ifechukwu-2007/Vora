@@ -33,7 +33,7 @@ async function checkAuth() {
         } = await supabase.auth.getSession();
 
         if (error || !session) {
-            window.location.href = "login";
+            window.location.href = "login.html";
             return;
         }
 
@@ -55,7 +55,7 @@ function setupLogout() {
         btn.addEventListener("click", async () => {
             try {
                 await supabase.auth.signOut();
-                window.location.href = "login";
+                window.location.href = "login.html";
             } catch (error) {
                 console.error("Logout Error:", error);
                 alert("Failed to logout.");

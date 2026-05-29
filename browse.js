@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const { data: sessionData } = await supabase.auth.getSession();
 
     if (!sessionData.session) {
-        window.location.href = "login";
+        window.location.href = "login.html";
         return;
     }
 
@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         await supabase.auth.signOut();
 
-        window.location.href = "login";
+        window.location.href = "login.html";
     };
 });
 

@@ -170,7 +170,7 @@ function setupRealTimeUpdates() {
 async function initializeNotifications() {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) {
-    window.location.href = 'login';
+    window.location.href = 'login.html';
     return;
   }
 
