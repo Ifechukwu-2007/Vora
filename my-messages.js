@@ -22,6 +22,7 @@ async function initialize() {
 
     currentUser = session.user;
 
+    setupLogout();
     await loadConversations();
     setupRealtime();
 
@@ -30,127 +31,172 @@ async function initialize() {
   }
 }
 
+function setupLogout() {
+  const logoutBtn = document.getElementById("logoutBtn");
+  const logoutBtnSideMenu = document.getElementById("logoutBtnSideMenu");
+  
+  logoutBtn?.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    window.location.href = "login.html";
+  });
+
+  logoutBtnSideMenu?.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    window.location.href = "login.html";
+  });
+}
+
 async function loadConversations() {
   messagesContainer.innerHTML = `
     <div class="bg-white rounded-xl p-6 text-center shadow">
-      <p>Loading conversations...</p>
+      <div class="text-5xl mb-4 animate-pulse">⏳</div>
+      <p class="text-gray-600 text-lg">Loading conversations...</p>
     </div>
   `;
 
-  const { data: chats, error } = await supabase
-    .from("chats")
-    .select("*")
-    .or(
-      `customer_id.eq.${currentUser.id},provider_id.eq.${currentUser.id}`
-    )
-    .order("updated_at", { ascending: false });
+  try {
+    const { data: chats, error } = await supabase
+      .from("chats")
+      .select("*")
+      .or(
+        `participants.eq.${currentUser.id},sender_id.eq.${currentUser.id}`
+      )
+      .order("updated_at", { ascending: false });
 
-  if (error) {
-    console.error(error);
-    return;
-  }
+    if (error) {
+      throw error;
+    }
 
-  if (!chats || chats.length === 0) {
+    if (!chats || chats.length === 0) {
+      messagesContainer.innerHTML = "";
+      emptyState.classList.remove("hidden");
+      return;
+    }
+
+    emptyState.classList.add("hidden");
     messagesContainer.innerHTML = "";
-    emptyState.classList.remove("hidden");
-    return;
-  }
 
-  emptyState.classList.add("hidden");
-  messagesContainer.innerHTML = "";
-
-  for (const chat of chats) {
-    await renderConversation(chat);
+    for (const chat of chats) {
+      await renderConversation(chat);
+    }
+  } catch (error) {
+    console.error("Error loading conversations:", error);
+    messagesContainer.innerHTML = `
+      <div class="bg-white rounded-xl p-6 text-center shadow">
+        <div class="text-6xl mb-4">❌</div>
+        <p class="text-gray-600 text-lg">Failed to load conversations</p>
+        <p class="text-gray-500 text-sm mt-2">${error.message || "Unknown error"}</p>
+        <button onclick="location.reload()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          Retry
+        </button>
+      </div>
+    `;
   }
 }
 
 async function renderConversation(chat) {
+  try {
+    const otherUserId =
+      chat.participants === currentUser.id
+        ? chat.sender_id
+        : chat.participants;
 
-  const otherUserId =
-    chat.customer_id === currentUser.id
-      ? chat.provider_id
-      : chat.customer_id;
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select("full_name, profile_picture")
+      .eq("id", otherUserId)
+      .maybeSingle();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, avatar_url")
-    .eq("id", otherUserId)
-    .single();
+    if (profileError) {
+      console.error("Profile fetch error:", profileError);
+    }
 
-  const { data: lastMessage } = await supabase
-    .from("messages")
-    .select("*")
-    .eq("chat_id", chat.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    const { data: lastMessage, error: messageError } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("chat_id", chat.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  const unreadCountResult = await supabase
-    .from("messages")
-    .select("*", { count: "exact", head: true })
-    .eq("chat_id", chat.id)
-    .neq("sender_id", currentUser.id)
-    .eq("is_read", false);
+    if (messageError) {
+      console.error("Last message fetch error:", messageError);
+    }
 
-  const unreadCount = unreadCountResult.count || 0;
+    let unreadCount = 0;
+    try {
+      const unreadCountResult = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("chat_id", chat.id)
+        .neq("sender_id", currentUser.id)
+        .eq("is_read", false);
 
-  const card = document.createElement("div");
+      unreadCount = unreadCountResult.count || 0;
+    } catch (err) {
+      console.error("Unread count error:", err);
+    }
 
-  card.className =
-    "bg-white rounded-xl shadow hover:shadow-lg transition cursor-pointer";
+    const card = document.createElement("div");
 
-  card.innerHTML = `
-    <div class="p-4 flex items-center gap-4">
+    card.className =
+      "bg-white rounded-xl shadow hover:shadow-lg transition cursor-pointer";
 
-      <div class="w-14 h-14 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+    const profilePicture = profile?.profile_picture && profile.profile_picture.trim() !== ""
+      ? profile.profile_picture
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.full_name || "User")}&background=random`;
 
-        ${
-          profile?.avatar_url
-            ? `<img src="${profile.avatar_url}" class="w-full h-full object-cover">`
-            : "👤"
-        }
+    card.innerHTML = `
+      <div class="p-4 flex items-center gap-4">
 
-      </div>
+        <div class="w-14 h-14 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
 
-      <div class="flex-1 min-w-0">
-
-        <div class="flex justify-between items-start">
-
-          <h3 class="font-bold truncate">
-            ${profile?.full_name || "User"}
-          </h3>
-
-          <span class="text-xs text-gray-500">
-            ${formatTime(lastMessage?.created_at)}
-          </span>
+          <img src="${profilePicture}" alt="${profile?.full_name || "User"}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.full_name || "User")}'" />
 
         </div>
 
-        <p class="text-gray-600 text-sm truncate mt-1">
-          ${lastMessage?.message || "No messages yet"}
-        </p>
+        <div class="flex-1 min-w-0">
+
+          <div class="flex justify-between items-start gap-2">
+
+            <h3 class="font-bold truncate">
+              ${profile?.full_name || "User"}
+            </h3>
+
+            <span class="text-xs text-gray-500 flex-shrink-0">
+              ${formatTime(lastMessage?.created_at)}
+            </span>
+
+          </div>
+
+          <p class="text-gray-600 text-sm truncate mt-1">
+            ${lastMessage?.message || "No messages yet"}
+          </p>
+
+        </div>
+
+        ${
+          unreadCount > 0
+            ? `
+            <div class="bg-blue-600 text-white text-xs min-w-[24px] h-6 rounded-full flex items-center justify-center px-2 flex-shrink-0">
+              ${unreadCount}
+            </div>
+          `
+            : ""
+        }
 
       </div>
+    `;
 
-      ${
-        unreadCount > 0
-          ? `
-          <div class="bg-blue-600 text-white text-xs min-w-[24px] h-6 rounded-full flex items-center justify-center px-2">
-            ${unreadCount}
-          </div>
-        `
-          : ""
-      }
+    card.addEventListener("click", () => {
+      window.location.href =
+        `chat.html?chat_id=${chat.id}`;
+    });
 
-    </div>
-  `;
-
-  card.addEventListener("click", () => {
-    window.location.href =
-      `chat.html?chat_id=${chat.id}`;
-  });
-
-  messagesContainer.appendChild(card);
+    messagesContainer.appendChild(card);
+  } catch (error) {
+    console.error("Error rendering conversation:", error);
+  }
 }
 
 function setupRealtime() {

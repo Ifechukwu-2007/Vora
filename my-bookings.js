@@ -279,7 +279,10 @@ async function startChat(providerId, serviceId) {
             .maybeSingle();
 
         if (existingChat?.id) {
-            window.location.href = `chat.html?chat_id=${existingChat.id}`;
+            const params = new URLSearchParams();
+            params.append("chat_id", existingChat.id);
+            if (serviceId) params.append("service_id", serviceId);
+            window.location.href = `chat.html?${params.toString()}`;
             return;
         }
 
@@ -298,7 +301,10 @@ async function startChat(providerId, serviceId) {
 
         if (error) throw error;
 
-        window.location.href = `chat.html?chat_id=${newChat.id}`;
+        const params = new URLSearchParams();
+        params.append("chat_id", newChat.id);
+        if (serviceId) params.append("service_id", serviceId);
+        window.location.href = `chat.html?${params.toString()}`;
 
     } catch (error) {
 
