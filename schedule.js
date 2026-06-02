@@ -54,28 +54,39 @@ async function loadData() {
 
   const userId = currentUser.id;
 
-  const { data: bookingData } = await supabase
-    .from('bookings')
-    .select('*')
-    .eq('provider_id', userId);
+  // Load bookings where user is provider OR client
+  const [providerRes, clientRes, availRes] = await Promise.all([
+    supabase.from('bookings').select('*').eq('provider_id', userId),
+    supabase.from('bookings').select('*').eq('user_id', userId),
+    supabase.from('availability').select('*').eq('provider_id', userId),
+  ]);
 
-  const { data: availabilityData } = await supabase
-    .from('availability')
-    .select('*')
-    .eq('provider_id', userId);
+  // Merge and deduplicate bookings by id
+  const allBookings = [
+    ...(providerRes.data || []),
+    ...(clientRes.data || []),
+  ];
+  const seen = new Set();
+  bookings = allBookings.filter(b => {
+    if (seen.has(b.id)) return false;
+    seen.add(b.id);
+    return true;
+  });
 
-  bookings = bookingData || [];
-  availability = availabilityData || [];
+  availability = availRes.data || [];
+
+  if (providerRes.error) console.error('Provider bookings error:', providerRes.error.message);
+  if (clientRes.error) console.error('Client bookings error:', clientRes.error.message);
+  if (availRes.error) console.error('Availability error:', availRes.error.message);
 }
 
 /**
  * =========================
- * PROFILE IMAGE FIX
+ * PROFILE IMAGE
  * =========================
  */
 function setupProfileImage() {
   const profileIcon = document.querySelector('[data-profile-icon="true"]');
-
   if (!profileIcon || !currentUser) return;
 
   const avatar =
@@ -87,6 +98,7 @@ function setupProfileImage() {
   profileIcon.innerHTML = `
     <img 
       src="${avatar}" 
+      alt="Profile"
       class="w-10 h-10 rounded-full object-cover"
     />
   `;
@@ -94,7 +106,7 @@ function setupProfileImage() {
 
 /**
  * =========================
- * HAMBURGER MENU FIX
+ * HAMBURGER MENU
  * =========================
  */
 function setupHamburgerMenu() {
@@ -133,38 +145,82 @@ function renderCalendar() {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+  const today = new Date();
+  const todayStr = toDateStr(today);
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   monthYear.innerText = currentDate.toLocaleString('default', {
     month: 'long',
-    year: 'numeric'
+    year: 'numeric',
   });
 
   calendar.innerHTML = '';
 
+  // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
     calendar.innerHTML += `<div></div>`;
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dateStr = toDateStr(new Date(year, month, day));
 
-    const hasBooking = bookings.some(b => b.date === dateStr);
-    const isAvailable = availability.some(a => a.date === dateStr);
+    const hasBooking = bookings.some(b => normalizeDate(b.date) === dateStr);
+    const isAvailable = availability.some(a => normalizeDate(a.date) === dateStr);
+    const isToday = dateStr === todayStr;
 
-    let bg = 'bg-gray-100';
+    let classes = 'p-2 text-center rounded cursor-pointer transition hover:opacity-80 text-sm font-medium';
 
-    if (hasBooking) bg = 'bg-blue-500 text-white';
-    else if (isAvailable) bg = 'bg-green-500 text-white';
+    if (hasBooking) {
+      classes += ' bg-blue-500 text-white';
+    } else if (isAvailable) {
+      classes += ' bg-green-500 text-white';
+    } else {
+      classes += ' bg-gray-100 text-gray-700 hover:bg-gray-200';
+    }
 
-    calendar.innerHTML += `
-      <div class="p-2 text-center rounded cursor-pointer ${bg}">
-        ${day}
-      </div>
-    `;
+    if (isToday) {
+      classes += ' ring-2 ring-offset-1 ring-blue-400';
+    }
+
+    const cell = document.createElement('div');
+    cell.className = classes;
+    cell.dataset.date = dateStr;
+    cell.innerText = day;
+
+    cell.addEventListener('click', () => handleDayClick(dateStr));
+
+    calendar.appendChild(cell);
   }
+}
+
+/**
+ * Handle clicking a calendar day — pre-fill the availability form date
+ */
+function handleDayClick(dateStr) {
+  const dateInput = document.getElementById('availabilityDate');
+  if (dateInput) {
+    dateInput.value = dateStr;
+  }
+
+  // Show bookings for that day
+  const dayBookings = bookings.filter(b => normalizeDate(b.date) === dateStr);
+  const dayAvailability = availability.filter(a => normalizeDate(a.date) === dateStr);
+
+  if (dayBookings.length === 0 && dayAvailability.length === 0) return;
+
+  const lines = [];
+
+  if (dayAvailability.length > 0) {
+    lines.push(`✅ Available: ${dayAvailability.map(a => `${a.start_time} – ${a.end_time}`).join(', ')}`);
+  }
+
+  if (dayBookings.length > 0) {
+    lines.push(`📅 Bookings: ${dayBookings.map(b => `${b.service_name || 'Service'} (${b.status})`).join(', ')}`);
+  }
+
+  alert(`${dateStr}\n\n${lines.join('\n')}`);
 }
 
 /**
@@ -201,26 +257,55 @@ function setupForm() {
 
     if (!currentUser) return;
 
-    const { error } = await supabase
-      .from('availability')
-      .insert([
-        {
-          provider_id: currentUser.id,
-          date,
-          start_time: startTime,
-          end_time: endTime
-        }
-      ]);
-
-    if (error) {
-      alert('Failed to set availability');
+    // Validate times
+    if (startTime >= endTime) {
+      alert('End time must be after start time.');
       return;
     }
 
-    alert('Availability updated!');
+    // Check for duplicate availability on same date
+    const duplicate = availability.find(
+      a => normalizeDate(a.date) === date && a.provider_id === currentUser.id
+    );
 
+    if (duplicate) {
+      const confirmUpdate = confirm(
+        `You already have availability set for ${date} (${duplicate.start_time} – ${duplicate.end_time}).\n\nDo you want to add another slot?`
+      );
+      if (!confirmUpdate) return;
+    }
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Saving...';
+
+    const { error } = await supabase.from('availability').insert([
+      {
+        provider_id: currentUser.id,
+        date,
+        start_time: startTime,
+        end_time: endTime,
+      },
+    ]);
+
+    submitBtn.disabled = false;
+    submitBtn.innerText = 'Mark as Available';
+
+    if (error) {
+      alert(`Failed to set availability: ${error.message}`);
+      return;
+    }
+
+    // Clear form
+    form.reset();
+
+    // Reload and re-render everything
     await loadData();
     renderCalendar();
+    renderStats();
+    renderUpcomingBookings();
+
+    alert('✅ Availability saved!');
   });
 }
 
@@ -235,15 +320,10 @@ function renderStats() {
   const confirmed = bookings.filter(b => b.status === 'confirmed').length;
   const completed = bookings.filter(b => b.status === 'completed').length;
 
-  const set = (id, value) => {
-    const el = document.getElementById(id);
-    if (el) el.innerText = value;
-  };
-
-  set('totalBookings', total);
-  set('pendingBookings', pending);
-  set('confirmedBookings', confirmed);
-  set('completedBookings', completed);
+  setEl('totalBookings', total);
+  setEl('pendingBookings', pending);
+  setEl('confirmedBookings', confirmed);
+  setEl('completedBookings', completed);
 }
 
 /**
@@ -253,30 +333,89 @@ function renderStats() {
  */
 function renderUpcomingBookings() {
   const container = document.getElementById('upcomingBookings');
-
   if (!container) return;
 
-  if (!bookings.length) {
+  const todayStr = toDateStr(new Date());
+
+  const upcoming = bookings
+    .filter(b => b.status !== 'completed' && normalizeDate(b.date) >= todayStr)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  if (!upcoming.length) {
     container.innerHTML = `<p class="text-gray-500 text-center py-8">No upcoming bookings</p>`;
     return;
   }
 
-  const upcoming = bookings
-    .filter(b => b.status !== 'completed')
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  container.innerHTML = upcoming
+    .map(b => {
+      const statusColor = {
+        pending: 'bg-yellow-100 text-yellow-700',
+        confirmed: 'bg-green-100 text-green-700',
+        cancelled: 'bg-red-100 text-red-700',
+        completed: 'bg-blue-100 text-blue-700',
+      }[b.status] || 'bg-gray-100 text-gray-700';
 
-  container.innerHTML = upcoming.map(b => `
-    <div class="border p-4 rounded-lg flex justify-between items-center">
+      const displayDate = b.date ? formatDisplayDate(normalizeDate(b.date)) : '—';
+      const displayTime = b.time || b.start_time || '';
 
-      <div>
-        <p class="font-bold">${b.service_name || 'Service'}</p>
-        <p class="text-gray-600">${b.date} • ${b.time || ''}</p>
-      </div>
+      return `
+        <div class="border border-gray-200 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:shadow-sm transition">
+          <div>
+            <p class="font-bold text-gray-800">${escapeHtml(b.service_name || 'Service')}</p>
+            <p class="text-gray-500 text-sm mt-1">
+              📅 ${displayDate}${displayTime ? ` &nbsp;•&nbsp; 🕐 ${displayTime}` : ''}
+            </p>
+            ${b.client_name ? `<p class="text-gray-500 text-sm">👤 ${escapeHtml(b.client_name)}</p>` : ''}
+          </div>
+          <span class="px-3 py-1 rounded-full text-sm font-semibold ${statusColor} capitalize">
+            ${escapeHtml(b.status)}
+          </span>
+        </div>
+      `;
+    })
+    .join('');
+}
 
-      <span class="px-3 py-1 rounded bg-gray-200 text-sm">
-        ${b.status}
-      </span>
+/**
+ * =========================
+ * HELPERS
+ * =========================
+ */
 
-    </div>
-  `).join('');
+/** Convert Date → "YYYY-MM-DD" */
+function toDateStr(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** Normalize any date string/ISO to "YYYY-MM-DD" */
+function normalizeDate(dateVal) {
+  if (!dateVal) return '';
+  return dateVal.toString().slice(0, 10);
+}
+
+/** Format "YYYY-MM-DD" → "Mon DD, YYYY" */
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/** Safe innerHTML helper */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Set element text */
+function setEl(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.innerText = value;
 }
