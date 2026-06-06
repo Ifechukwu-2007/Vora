@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
             clearInterval(countdown);
 
             window.location.href =
-                "home.html";
+                "index.html";
         }
 
     }, 1000);
