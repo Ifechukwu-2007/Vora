@@ -11,6 +11,9 @@ let reviewStatsMap = {};
 // STORE RECENT REVIEWS
 let reviewsMap = {};
 
+// STORE PROVIDER PROFILES
+let providerMap = {};
+
 const CACHE_KEY = "browse_services_cache";
 const CACHE_DURATION = 5 * 60 * 1000;
   
@@ -168,6 +171,8 @@ async function loadServices(container) {
 
             await fetchReviews();
 
+            await fetchProviders();
+
             render(allServices, container);
 
             return;
@@ -189,6 +194,11 @@ async function loadServices(container) {
         // FETCH REVIEWS
         // =========================
         await fetchReviews();
+
+        // =========================
+        // FETCH PROVIDERS
+        // =========================
+        await fetchProviders();
 
         // =========================
         // SETTINGS
@@ -225,6 +235,38 @@ async function loadServices(container) {
 }
 
 // =========================
+// FETCH PROVIDERS
+// =========================
+async function fetchProviders() {
+
+    try {
+
+        const providerIds = allServices
+            .map(service => service.provider_id)
+            .filter(Boolean);
+
+        if (!providerIds.length) return;
+
+        const { data: providersData, error } = await supabase
+            .from("users")
+            .select("id, full_name, profile_picture")
+            .in("id", providerIds);
+
+        if (error) throw error;
+
+        providerMap = {};
+
+        providersData.forEach(provider => {
+            providerMap[provider.id] = provider;
+        });
+
+    } catch (error) {
+
+        console.error("Failed to fetch providers:", error);
+    }
+}
+
+// =========================
 // FETCH REVIEWS (Display Only)
 // =========================
 async function fetchReviews() {
@@ -237,21 +279,31 @@ async function fetchReviews() {
 
         if (!serviceIds.length) return;
 
-        const { data: reviewsData, error } = await supabase
+        // FETCH REVIEWS
+        const { data: reviewsData, error: reviewsError } = await supabase
             .from("reviews")
-            .select(`
-                *,
-                user_profile:user_id (
-                    full_name,
-                    profile_picture
-                )
-            `)
+            .select("*")
             .in("service_id", serviceIds)
             .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        if (reviewsError) throw reviewsError;
 
         console.log(`Loaded ${reviewsData?.length || 0} reviews for ${serviceIds.length} services`);
+
+        // FETCH REVIEWER PROFILES
+        const userIds = [...new Set((reviewsData || []).map(r => r.user_id).filter(Boolean))];
+
+        let usersById = {};
+        if (userIds.length) {
+            const { data: users, error: usersError } = await supabase
+                .from("users")
+                .select("id, full_name, profile_picture")
+                .in("id", userIds);
+
+            if (usersError) console.error("Failed to fetch reviewer profiles:", usersError);
+
+            usersById = Object.fromEntries((users || []).map(u => [u.id, u]));
+        }
 
         reviewStatsMap = {}; 
         reviewsMap = {};
@@ -282,8 +334,8 @@ async function fetchReviews() {
                 reviewsMap[serviceId] = [];
             }
 
-            // Normalize the profile data
-            review.profiles = Array.isArray(review.user_profile) ? review.user_profile[0] : review.user_profile;
+            // Attach user profile data
+            review.profiles = usersById[review.user_id] || null;
             reviewsMap[serviceId].push(review);
         });
 
@@ -403,6 +455,9 @@ function render(services, container) {
         // SHOW ONLY 2 REVIEWS
         const recentReviews = reviews.slice(0, 2);
 
+        // GET PROVIDER INFO
+        const provider = providerMap[service.provider_id];
+
         const card = document.createElement("div");
 
         card.className = `
@@ -431,80 +486,40 @@ function render(services, container) {
                     ${service.category || ""}
                 </p>
 
+                <!-- PROVIDER NAME -->
+                <div class="flex items-center gap-2 mt-2 text-sm">
+                    <span class="text-gray-600 font-medium">
+                        By: ${provider?.full_name || 'Service Provider'}
+                    </span>
+                </div>
+
                 <!-- RATINGS -->
                 <div class="flex items-center gap-2 mt-2 text-sm">
-
                     ${
                         stats?.count
                         ? `
-                        <div class="text-yellow-500">
-                            ${'★'.repeat(Math.round(averageRating))}
-                            ${'☆'.repeat(5 - Math.round(averageRating))}
-                        </div>
-
-                        <div class="text-gray-500">
-                            ${averageRating}/5 · ${stats.count} review${stats.count > 1 ? "s" : ""}
-                        </div>
+                            <div class="text-yellow-500">
+                                ${'★'.repeat(Math.round(averageRating))}${'☆'.repeat(5 - Math.round(averageRating))}
+                            </div>
+                            <div class="text-gray-500">
+                                ${averageRating}/5 · ${stats.count} review${stats.count > 1 ? "s" : ""}
+                            </div>
                         `
-                        : ``
+                        : `
+                            <div class="text-gray-300">
+                                ☆☆☆☆☆
+                            </div>
+                            <div class="text-gray-400">
+                                No ratings yet
+                            </div>
+                        `
                     }
-
                 </div>
 
                 <!-- PRICE -->
                 <p class="text-blue-600 font-bold text-lg mt-3">
                     ₦${buyerPrice.toLocaleString()}
                 </p>
-
-                <!-- REVIEWS -->
-                ${
-                    recentReviews.length
-                    ? `
-                    <div class="mt-4 border-t pt-4 space-y-3">
-
-                        ${recentReviews.map(review => `
-
-                            <div class="flex gap-3">
-
-                                <img
-                                    src="${
-                                        review.profiles?.profile_picture ||
-                                        'https://ui-avatars.com/api/?name=User'
-                                    }"
-                                    class="w-10 h-10 rounded-full object-cover border"
-                                />
-
-                                <div class="flex-1">
-
-                                    <div class="flex items-center justify-between">
-
-                                        <p class="font-medium text-sm text-gray-900">
-                                            ${
-                                                review.profiles?.full_name ||
-                                                'Anonymous User'
-                                            }
-                                        </p>
-
-                                        <div class="text-yellow-500 text-xs">
-                                            ${'★'.repeat(review.rating || 0)}
-                                        </div>
-
-                                    </div>
-
-                                    <p class="text-sm text-gray-600 line-clamp-2">
-                                        ${review.comment || "Great service"}
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                        `).join("")}
-
-                    </div>
-                    `
-                    : ""
-                }
 
             </div>
         `;
