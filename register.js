@@ -219,6 +219,8 @@ const registerForm = document.getElementById("registerForm");
 if (registerForm) {
   const fullnameInput = document.getElementById("fullname");
   const emailInput = document.getElementById("email");
+  const phoneInput = document.getElementById("phone");
+  const locationInput = document.getElementById("location");
   const passwordInput = document.getElementById("password");
   const confirmPasswordInput = document.getElementById("confirmPassword");
   const termsInput = document.getElementById("terms");
@@ -261,6 +263,8 @@ if (registerForm) {
       signupBtn.disabled =
         !fullnameInput?.value.trim() ||
         !emailInput?.value.trim() ||
+        !phoneInput?.value.trim() ||
+        !locationInput?.value.trim() ||
         !passwordInput?.value.trim() ||
         !confirmPasswordInput?.value.trim() ||
         !termsInput?.checked;
@@ -269,6 +273,8 @@ if (registerForm) {
 
   if (fullnameInput) fullnameInput.addEventListener("input", checkRegisterInputs);
   if (emailInput) emailInput.addEventListener("input", checkRegisterInputs);
+  if (phoneInput) phoneInput.addEventListener("input", checkRegisterInputs);
+  if (locationInput) locationInput.addEventListener("input", checkRegisterInputs);
   if (confirmPasswordInput) confirmPasswordInput.addEventListener("input", checkRegisterInputs);
   if (termsInput) termsInput.addEventListener("change", checkRegisterInputs);
 
@@ -283,6 +289,8 @@ if (registerForm) {
 
     const fullname = fullnameInput?.value.trim() || "";
     const email = emailInput?.value.trim() || "";
+    const phone = phoneInput?.value.trim() || "";
+    const location = locationInput?.value.trim() || "";
     const password = passwordInput?.value.trim() || "";
     const confirmPassword = confirmPasswordInput?.value.trim() || "";
 
@@ -293,6 +301,16 @@ if (registerForm) {
 
     if (!validateEmail(email)) {
       showError("Please enter a valid email.");
+      return;
+    }
+
+    if (!phone || phone.length < 5) {
+      showError("Please enter a valid phone number.");
+      return;
+    }
+
+    if (!location || location.length < 2) {
+      showError("Please enter your location.");
       return;
     }
 
@@ -329,15 +347,31 @@ if (registerForm) {
 
       if (authError) throw authError;
 
-      // Create user profile in Supabase
-      const { error: profileError } = await supabase
+      // Create user profile in users table
+      const { error: userError } = await supabase
         .from('users')
         .insert([{
           uid: authData.user.id,
           full_name: fullname,
           email: email,
+          phone: phone,
+          location: location,
           role: 'user',
           verified: false
+        }]);
+
+      if (userError) throw userError;
+
+      // Create user profile in profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: authData.user.id,
+          email: email,
+          full_name: fullname,
+          phone: phone,
+          location: location,
+          profile_picture: null
         }]);
 
       if (profileError) throw profileError;

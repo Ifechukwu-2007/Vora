@@ -257,7 +257,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     location: locationInput.value.trim(),
                     profile_picture: currentProfilePicture
                 })
-                .eq("id", currentUser.id);
+                .eq("uid", currentUser.id);
 
             alert("Profile updated successfully");
 
@@ -276,49 +276,91 @@ document.addEventListener("DOMContentLoaded", async () => {
     // LOAD PROFILE FUNCTION
     // =========================
     async function loadProfile() {
+      try {
+        // Always set email from auth
+        emailInput.value = currentUser.email || "";
 
-        try {
+        console.log("Loading profile for user:", currentUser.id);
 
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", currentUser.id)
-                .maybeSingle();
+        // 1) Try profiles first
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", currentUser.id)
+          .maybeSingle();
 
-            if (error) {
-                throw error;
-            }
+        if (profileError) console.warn("profiles table error:", profileError);
 
-            // EMAIL
-            emailInput.value = currentUser.email || "";
+        // 2) If no profile row exists, fetch from users table (signup data)
+        let dataToUse = profileData;
+        if (!profileData) {
+          console.log("No profile found, checking users table...");
+          
+          // Fetch signup data from users table
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("full_name, phone, location, profile_picture")
+            .eq("uid", currentUser.id)
+            .maybeSingle();
 
-            if (!data) return;
+          if (userError) {
+            console.warn("users table error:", userError);
+          }
 
-            // FILL FORM
-            nameInput.value = data.full_name || "";
+          console.log("User data from signup:", userData);
 
-            phoneInput.value = data.phone || "";
+          // Create profile row with signup data
+          const { data: upserted, error: upsertError } = await supabase
+            .from("profiles")
+            .upsert({
+              id: currentUser.id,
+              email: currentUser.email || null,
+              full_name: userData?.full_name || "",
+              phone: userData?.phone || "",
+              location: userData?.location || "",
+              profile_picture: userData?.profile_picture || null
+            })
+            .select("*")
+            .maybeSingle();
 
-            locationInput.value = data.location || "";
+          if (upsertError) {
+            console.error("Error upserting profile:", upsertError);
+            throw upsertError;
+          }
 
-            // PROFILE IMAGE
-            if (data.profile_picture) {
-
-                currentProfilePicture = data.profile_picture;
-
-                profilePictureDisplay.src = data.profile_picture;
-
-                profilePictureDisplay.classList.remove("hidden");
-
-                profilePicturePlaceholder.classList.add("hidden");
-
-                removeProfilePictureBtn.classList.remove("hidden");
-            }
-
-        } catch (error) {
-
-            console.error(error);
+          console.log("Created profile:", upserted);
+          dataToUse = upserted;
         }
+
+        // 3) Fill the form from profiles
+        if (!dataToUse) {
+          console.warn("No data available to fill form");
+          return;
+        }
+
+        console.log("Filling form with data:", dataToUse);
+        nameInput.value = dataToUse.full_name || "";
+        phoneInput.value = dataToUse.phone || "";
+        locationInput.value = dataToUse.location || "";
+
+        // Profile image UI
+        if (dataToUse.profile_picture) {
+          currentProfilePicture = dataToUse.profile_picture;
+          profilePictureDisplay.src = dataToUse.profile_picture;
+          profilePictureDisplay.classList.remove("hidden");
+          profilePicturePlaceholder.classList.add("hidden");
+          removeProfilePictureBtn.classList.remove("hidden");
+        } else {
+          currentProfilePicture = null;
+          profilePictureDisplay.src = "";
+          profilePictureDisplay.classList.add("hidden");
+          profilePicturePlaceholder.classList.remove("hidden");
+          removeProfilePictureBtn.classList.add("hidden");
+        }
+
+      } catch (error) {
+        console.error("Load profile error:", error);
+      }
     }
 
     // =========================

@@ -126,73 +126,92 @@ function renderNotifications(items) {
 async function fetchNotifications() {
   if (!currentUser) return;
 
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .or(`user_id.eq.${currentUser.id},userId.eq.${currentUser.id}`)
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching notifications:', error);
-    list.innerHTML = `
-      <div class="bg-red-50 border border-red-200 p-4 rounded-xl">
-        <p class="text-red-600 font-semibold">Failed to load notifications</p>
-      </div>
-    `;
-    return;
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      if (list) {
+        list.innerHTML = `
+          <div class="bg-red-50 border border-red-200 p-4 rounded-xl">
+            <p class="text-red-600 font-semibold">Failed to load notifications</p>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    renderNotifications(data || []);
+  } catch (err) {
+    console.error('Exception fetching notifications:', err);
   }
-
-  renderNotifications(data || []);
 }
 
 function setupRealTimeUpdates() {
   if (!currentUser) return;
-  if (notificationChannel) {
-    supabase.removeChannel(notificationChannel);
-    notificationChannel = null;
-  }
+  
+  try {
+    if (notificationChannel) {
+      supabase.removeChannel(notificationChannel);
+      notificationChannel = null;
+    }
 
-  notificationChannel = supabase
-    .channel(`notifications-${currentUser.id}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
-      () => fetchNotifications()
-    )
-    .on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
-      () => fetchNotifications()
-    )
-    .subscribe();
+    notificationChannel = supabase
+      .channel(`notifications-${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        () => fetchNotifications()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        () => fetchNotifications()
+      )
+      .subscribe();
+  } catch (err) {
+    console.error('Error setting up real-time updates:', err);
+  }
 }
 
 async function initializeNotifications() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
-    window.location.href = 'login.html';
-    return;
-  }
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+      console.warn('No user session found');
+      return;
+    }
 
-  currentUser = user;
-  await fetchNotifications();
-  setupRealTimeUpdates();
+    currentUser = user;
+    await fetchNotifications();
+    setupRealTimeUpdates();
+  } catch (err) {
+    console.error('Error initializing notifications:', err);
+  }
 }
 
 markAllBtn?.addEventListener('click', async () => {
   if (!currentUser) return;
 
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read: true, read_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .or(`user_id.eq.${currentUser.id},userId.eq.${currentUser.id}`);
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true, read_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('user_id', currentUser.id);
 
-  if (error) {
-    console.error('Error marking all notifications as read:', error);
-    return;
+    if (error) {
+      console.error('Error marking all notifications as read:', error);
+      return;
+    }
+
+    await fetchNotifications();
+  } catch (err) {
+    console.error('Exception marking notifications as read:', err);
   }
-
-  await fetchNotifications();
 });
 
 window.addEventListener('beforeunload', () => {
